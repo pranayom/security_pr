@@ -71,17 +71,16 @@ class TestGitHubClient:
     @respx.mock
     @pytest.mark.asyncio
     async def test_pagination(self):
-        # Page 1 with Link header pointing to page 2
-        respx.get(f"{BASE_URL}/repos/owner/repo/pulls").mock(
-            return_value=httpx.Response(
+        responses = iter([
+            httpx.Response(
                 200,
                 json=[{"number": 1}],
                 headers={"link": f'<{BASE_URL}/repos/owner/repo/pulls?page=2>; rel="next"'},
-            )
-        )
-        # Page 2 (no Link header = last page)
-        respx.get(f"{BASE_URL}/repos/owner/repo/pulls?page=2").mock(
-            return_value=httpx.Response(200, json=[{"number": 2}])
+            ),
+            httpx.Response(200, json=[{"number": 2}]),
+        ])
+        respx.get(url__startswith=f"{BASE_URL}/repos/owner/repo/pulls").mock(
+            side_effect=lambda req: next(responses)
         )
 
         async with GitHubClient(api_url=BASE_URL) as client:

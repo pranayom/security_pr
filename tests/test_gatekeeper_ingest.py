@@ -76,15 +76,17 @@ class TestIngestPR:
         files_data = json.loads((FIXTURES / "sample_pr_files.json").read_text())
         user_data = json.loads((FIXTURES / "sample_user.json").read_text())
 
+        # Same URL serves JSON or diff based on Accept header
+        def pr_handler(request):
+            if "diff" in request.headers.get("accept", ""):
+                return httpx.Response(200, text="diff --git a/file.py b/file.py")
+            return httpx.Response(200, json=pr_data)
+
         respx.get(f"{BASE_URL}/repos/nicoseng/OpenClaw/pulls/42").mock(
-            return_value=httpx.Response(200, json=pr_data)
+            side_effect=pr_handler
         )
         respx.get(f"{BASE_URL}/repos/nicoseng/OpenClaw/pulls/42/files").mock(
             return_value=httpx.Response(200, json=files_data)
-        )
-        # Diff endpoint (same URL, different Accept header)
-        respx.get(f"{BASE_URL}/repos/nicoseng/OpenClaw/pulls/42").mock(
-            return_value=httpx.Response(200, text="diff --git a/file.py b/file.py")
         )
         respx.get(f"{BASE_URL}/users/contributor123").mock(
             return_value=httpx.Response(200, json=user_data)
@@ -137,8 +139,16 @@ class TestIngestPR:
                 "base": {"repo": {"name": "repo", "owner": {"login": "owner"}}},
                 "created_at": "2025-12-01T10:00:00Z",
             }
+
+            def make_pr_handler(data):
+                def handler(request):
+                    if "diff" in request.headers.get("accept", ""):
+                        return httpx.Response(200, text="")
+                    return httpx.Response(200, json=data)
+                return handler
+
             respx.get(f"{BASE_URL}/repos/owner/repo/pulls/{num}").mock(
-                return_value=httpx.Response(200, json=pr_data)
+                side_effect=make_pr_handler(pr_data)
             )
             respx.get(f"{BASE_URL}/repos/owner/repo/pulls/{num}/files").mock(
                 return_value=httpx.Response(200, json=[])
