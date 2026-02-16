@@ -1,0 +1,16 @@
+[
+  {
+    "filename": "src/auth/login.py",
+    "status": "modified",
+    "additions": 25,
+    "deletions": 5,
+    "patch": "@@ -10,5 +10,25 @@\n+def validate_input(username, password):\n+    if not username or not password:\n+        raise ValueError('Missing credentials')\n+    if len(username) > 100:\n+        raise ValueError('Username too long')"
+  },
+  {
+    "filename": "tests/test_login.py",
+    "status": "added",
+    "additions": 30,
+    "deletions": 0,
+    "patch": "@@ -0,0 +1,30 @@\n+import pytest\n+from src.auth.login import validate_input\n+\n+def test_validate_input_empty():\n+    with pytest.raises(ValueError):\n+        validate_input('', 'pass')"
+  }
+]

@@ -57,5 +57,44 @@ async def check_cve_tool(target: str) -> str:
     return result.model_dump_json(indent=2)
 
 
+@mcp.tool()
+async def assess_contribution_risk_tool(
+    owner: str,
+    repo: str,
+    pr_number: int,
+    vision_document_path: str = "",
+    enable_tier3: bool = True,
+) -> str:
+    """Assess a GitHub pull request for contribution risk using a three-tier gated pipeline.
+
+    Tier 1: Embedding-based dedup (flags duplicate PRs).
+    Tier 2: Heuristic suspicion scoring (new accounts, sensitive paths, dep changes, etc.).
+    Tier 3: LLM vision alignment via claude --print (optional).
+
+    Returns a JSON scorecard with verdict (FAST_TRACK / REVIEW_REQUIRED / RECOMMEND_CLOSE),
+    per-dimension scores, and specific flags with explanations.
+
+    Args:
+        owner: GitHub repo owner (e.g. "nicoseng").
+        repo: GitHub repo name (e.g. "OpenClaw").
+        pr_number: Pull request number.
+        vision_document_path: Path to YAML vision document (optional, enables Tier 3).
+        enable_tier3: Whether to run Tier 3 vision alignment (default True).
+    """
+    from src.gatekeeper.github_client import GitHubClient
+    from src.gatekeeper.ingest import ingest_pr
+    from src.gatekeeper.pipeline import run_pipeline
+
+    async with GitHubClient() as client:
+        pr = await ingest_pr(owner, repo, pr_number, client)
+
+    scorecard = await run_pipeline(
+        pr,
+        vision_document_path=vision_document_path,
+        enable_tier3=enable_tier3,
+    )
+    return scorecard.model_dump_json(indent=2)
+
+
 if __name__ == "__main__":
     mcp.run()

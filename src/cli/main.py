@@ -128,5 +128,39 @@ def cve(target: str = typer.Argument(help="Dependency file or directory")):
     console.print(table)
 
 
+@app.command()
+def assess(
+    owner: str = typer.Argument(help="GitHub repo owner"),
+    repo: str = typer.Argument(help="GitHub repo name"),
+    pr_number: int = typer.Argument(help="Pull request number"),
+    vision: str = typer.Option("", "--vision", help="Path to YAML vision document"),
+    no_tier3: bool = typer.Option(False, "--no-tier3", help="Skip Tier 3 vision alignment"),
+    json_output: bool = typer.Option(False, "--json", help="Output raw JSON scorecard"),
+):
+    """Assess a GitHub PR for contribution risk (three-tier gated pipeline)."""
+    from src.gatekeeper.github_client import GitHubClient
+    from src.gatekeeper.ingest import ingest_pr
+    from src.gatekeeper.pipeline import run_pipeline
+    from src.gatekeeper.scorecard import render_scorecard, scorecard_to_json
+
+    async def _run():
+        async with GitHubClient() as client:
+            pr = await ingest_pr(owner, repo, pr_number, client)
+
+        scorecard = await run_pipeline(
+            pr,
+            vision_document_path=vision,
+            enable_tier3=not no_tier3,
+        )
+        return scorecard
+
+    scorecard = asyncio.run(_run())
+
+    if json_output:
+        console.print(scorecard_to_json(scorecard))
+    else:
+        render_scorecard(scorecard, console)
+
+
 if __name__ == "__main__":
     app()

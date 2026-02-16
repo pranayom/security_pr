@@ -1,0 +1,16 @@
+project: OpenClaw
+principles:
+  - name: Security First
+    description: All changes must consider security implications and include appropriate validation.
+  - name: Test Coverage
+    description: New features must include comprehensive tests covering happy path and edge cases.
+  - name: API Stability
+    description: Public API changes require deprecation notices and migration guides.
+anti_patterns:
+  - Hardcoded credentials or secrets
+  - Direct database queries without parameterization
+  - Disabling security checks in production code
+focus_areas:
+  - Authentication and authorization
+  - Input validation
+  - Dependency management
