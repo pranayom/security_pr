@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "mcp-ai-auditor": {
+      "command": "python",
+      "args": ["src/mcp/server.py"],
+      "cwd": "."
+    }
+  }
+}
