@@ -26,6 +26,9 @@ dev = [
 [project.scripts]
 auditor = "src.cli.main:app"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"

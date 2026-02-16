@@ -1,0 +1,7 @@
+# Known vulnerable versions for testing
+django==2.2.1
+requests==2.19.1
+flask==0.12.2
+pyyaml==5.1
+urllib3==1.24.1
+jinja2==2.10
