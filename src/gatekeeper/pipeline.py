@@ -45,6 +45,11 @@ async def run_pipeline(
     all_flags: list[SuspicionFlag] = []
     dimensions: list[DimensionScore] = []
 
+    # Load vision document early so focus_areas can feed into heuristics
+    vision = None
+    if vision_document_path:
+        vision = load_vision_document(vision_document_path)
+
     # --- Tier 1: Dedup ---
     dedup_result: DedupResult
     if pr_embedding is not None:
@@ -78,7 +83,8 @@ async def run_pipeline(
         )
 
     # --- Tier 2: Heuristics ---
-    heuristics_result = run_heuristics(pr, recent_prs)
+    extra_sensitive = vision.focus_areas if vision else None
+    heuristics_result = run_heuristics(pr, recent_prs, extra_sensitive_paths=extra_sensitive)
     all_flags.extend(heuristics_result.flags)
 
     dimensions.append(DimensionScore(
@@ -106,8 +112,7 @@ async def run_pipeline(
 
     # --- Tier 3: Vision Alignment ---
     vision_result: VisionAlignmentResult | None = None
-    if enable_tier3 and vision_document_path:
-        vision = load_vision_document(vision_document_path)
+    if enable_tier3 and vision is not None:
         vision_result = await run_vision_alignment(pr, vision)
 
         dimensions.append(DimensionScore(

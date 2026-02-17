@@ -60,9 +60,9 @@ def check_first_contribution(pr: PRMetadata) -> SuspicionFlag | None:
     return None
 
 
-def check_sensitive_paths(pr: PRMetadata) -> SuspicionFlag | None:
+def check_sensitive_paths(pr: PRMetadata, sensitive_paths: list[str] | None = None) -> SuspicionFlag | None:
     """Rule 3: Flag if PR touches security-sensitive paths."""
-    sensitive_files = [f for f in pr.files if _is_sensitive_path(f.filename)]
+    sensitive_files = [f for f in pr.files if _is_sensitive_path(f.filename, sensitive_paths)]
     if not sensitive_files:
         return None
 
@@ -143,7 +143,7 @@ def check_dependency_changes(pr: PRMetadata) -> SuspicionFlag | None:
     return None
 
 
-def check_large_diff_hiding(pr: PRMetadata) -> SuspicionFlag | None:
+def check_large_diff_hiding(pr: PRMetadata, sensitive_paths: list[str] | None = None) -> SuspicionFlag | None:
     """Rule 6: Flag large diffs where <5% of changes are in sensitive paths."""
     total_changes = pr.total_additions + pr.total_deletions
     if total_changes < 500:
@@ -152,7 +152,7 @@ def check_large_diff_hiding(pr: PRMetadata) -> SuspicionFlag | None:
     sensitive_changes = sum(
         f.additions + f.deletions
         for f in pr.files
-        if _is_sensitive_path(f.filename)
+        if _is_sensitive_path(f.filename, sensitive_paths)
     )
 
     if sensitive_changes == 0:
@@ -211,6 +211,7 @@ def run_heuristics(
     pr: PRMetadata,
     recent_prs: list[PRMetadata] | None = None,
     threshold: float = 0.0,
+    extra_sensitive_paths: list[str] | None = None,
 ) -> HeuristicsResult:
     """Run all heuristic rules and aggregate into a suspicion score.
 
@@ -218,6 +219,7 @@ def run_heuristics(
         pr: The PR to assess.
         recent_prs: Other recent PRs (for temporal clustering).
         threshold: Suspicion threshold (0 = use config default).
+        extra_sensitive_paths: Additional sensitive paths (e.g. from vision document focus_areas).
 
     Returns:
         HeuristicsResult with outcome GATED if score >= threshold, PASS otherwise.
@@ -225,13 +227,18 @@ def run_heuristics(
     if threshold <= 0:
         threshold = gatekeeper_settings.suspicion_threshold
 
+    # Merge default + project-specific sensitive paths
+    merged_sensitive = None
+    if extra_sensitive_paths:
+        merged_sensitive = gatekeeper_settings.sensitive_paths + extra_sensitive_paths
+
     rules = [
         check_new_account(pr),
         check_first_contribution(pr),
-        check_sensitive_paths(pr),
+        check_sensitive_paths(pr, sensitive_paths=merged_sensitive),
         check_test_ratio(pr),
         check_dependency_changes(pr),
-        check_large_diff_hiding(pr),
+        check_large_diff_hiding(pr, sensitive_paths=merged_sensitive),
         check_temporal_clustering(pr, recent_prs),
     ]
 

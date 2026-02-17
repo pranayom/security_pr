@@ -1,0 +1,94 @@
+# Vision Document: OpenClaw
+# A local-first personal AI assistant with multi-channel routing
+# Repo: openclaw/openclaw
+# Last updated: 2026-02-16
+
+project: OpenClaw
+
+principles:
+  - name: Local-First Privacy
+    description: >
+      Users run their own agent on their own hardware. Data stays local.
+      The Gateway binds to loopback by default. Credentials are stored at
+      ~/.openclaw/credentials/ and must never be transmitted externally
+      unless the user explicitly configures a channel integration.
+
+  - name: Multi-Channel, Single Agent
+    description: >
+      One agent routes across many channels (WhatsApp, Telegram, Slack,
+      Discord, Signal, iMessage, Teams, Matrix, etc.). Each workspace gets
+      isolated agent sessions. Changes should maintain channel isolation
+      and not introduce cross-channel data leakage.
+
+  - name: Skills Ecosystem Integrity
+    description: >
+      The ClawHub marketplace has been targeted by supply chain attacks
+      (341+ malicious skills identified). Any PR touching skill loading,
+      skill execution paths, or extension mechanisms must include tests
+      and security review. Skills execute with system-level permissions.
+
+  - name: Architecture-First Contribution
+    description: >
+      New features and architectural changes require prior discussion in
+      GitHub Discussions or Discord before a PR is opened. PRs that
+      introduce architectural changes without discussion violate the
+      contribution model.
+
+  - name: AI Transparency
+    description: >
+      AI-assisted/vibe-coded PRs are welcome but must be disclosed in the
+      PR title or description, note the degree of testing performed, and
+      include prompts or session logs when possible. Undisclosed AI-generated
+      PRs are a governance concern.
+
+  - name: Stability Over Features
+    description: >
+      Current priorities emphasize stability (channel connection edge cases),
+      UX (onboarding, error messaging), and performance (token usage,
+      compaction). Feature additions should not destabilize existing
+      channel integrations.
+
+  - name: TypeScript ESM Exclusively
+    description: >
+      The codebase is TypeScript ESM only. Avoid `any` types. Keep files
+      under 500-700 lines. Use Lit with legacy decorators for Control UI.
+      Tests are colocated as *.test.ts files.
+
+anti_patterns:
+  - Editing node_modules directly
+  - Patching dependencies without maintainer approval
+  - Hand-rolling CLI spinners (use src/cli/progress.ts)
+  - Updating the Carbon dependency (explicitly prohibited)
+  - Using ^ or ~ in patched dependencies (exact versions required)
+  - Creating, applying, or dropping git stash without instruction
+  - Modifying git worktree checkouts without instruction
+  - Switching branches without explicit instruction
+  - Committing unrelated work-in-progress changes
+  - Changing version numbers without permission
+  - Running npm publish without permission
+  - Flipping experimentalDecorators or useDefineForClassFields without updating build tooling
+  - Submitting skills to main repo instead of ClawHub
+  - Crypto/blockchain/DeFi features
+  - Security reports without reproduction steps, impact, and remediation advice
+
+focus_areas:
+  # Skill/plugin supply chain (critical attack surface)
+  - extensions/
+  - skill-loader
+  - clawhub
+  # Gateway and networking
+  - gateway
+  - websocket
+  - proxy
+  # Credentials and auth
+  - credentials
+  - oauth
+  - sessions
+  - pairing
+  # Channel integrations
+  - baileys
+  - grammy
+  - bolt
+  - discord.js
+  # Build and CI
+  - pnpm-lock.yaml
