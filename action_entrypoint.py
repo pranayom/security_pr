@@ -103,12 +103,15 @@ async def main(owner: str, repo: str, pr_number: int) -> None:
     post_comment = os.environ.get("INPUT_POST_COMMENT", "true").lower() == "true"
 
     # Determine Tier 3 availability
+    enforce_vision = os.environ.get("INPUT_ENFORCE_VISION", "false").lower() == "true"
     has_openrouter = bool(os.environ.get("AUDITOR_GK_OPENROUTER_API_KEY", ""))
-    enable_tier3 = has_openrouter and bool(vision_path)
+    enable_tier3 = enforce_vision and has_openrouter and bool(vision_path)
 
-    if not has_openrouter:
+    if not enforce_vision:
+        print("Vision enforcement disabled (enforce_vision=false) — Tier 3 skipped")
+    elif not has_openrouter:
         print("No OPENROUTER_API_KEY — running Tiers 1+2 only")
-    if not vision_path:
+    elif not vision_path:
         print("No vision document — Tier 3 skipped")
 
     # Ingest PR

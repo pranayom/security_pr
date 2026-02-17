@@ -30,6 +30,10 @@ inputs:
     description: "Suspicion score threshold for flagging PRs (0.0-1.0)"
     required: false
     default: "0.6"
+  enforce_vision:
+    description: "Enable Tier 3 vision alignment enforcement (set to true after maintainer review of vision document)"
+    required: false
+    default: "false"
   post_comment:
     description: "Post scorecard as a PR comment (true/false)"
     required: false
@@ -67,6 +71,7 @@ runs:
         AUDITOR_GK_DUPLICATE_THRESHOLD: ${{ inputs.duplicate_threshold }}
         AUDITOR_GK_SUSPICION_THRESHOLD: ${{ inputs.suspicion_threshold }}
         INPUT_VISION_DOCUMENT: ${{ inputs.vision_document }}
+        INPUT_ENFORCE_VISION: ${{ inputs.enforce_vision }}
         INPUT_POST_COMMENT: ${{ inputs.post_comment }}
       run: |
         cd ${{ github.action_path }}

@@ -1,7 +1,8 @@
-# Vision Document: OpenClaw
+# Vision Document: OpenClaw (DRAFT - not yet enforced)
 # A local-first personal AI assistant with multi-channel routing
 # Repo: openclaw/openclaw
-# Last updated: 2026-02-16
+# Status: draft - maintainer review required before enforcement
+# Last updated: 2026-02-17
 
 project: OpenClaw
 
