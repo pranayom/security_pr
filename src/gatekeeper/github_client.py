@@ -106,11 +106,16 @@ class GitHubClient:
         )
 
     async def get_pr_diff(self, owner: str, repo: str, number: int) -> str:
-        """Fetch the raw diff for a pull request."""
+        """Fetch the raw diff for a pull request.
+
+        Returns empty string if diff is unavailable (e.g. draft PRs, merge conflicts).
+        """
         resp = await self.client.get(
             f"/repos/{owner}/{repo}/pulls/{number}",
             headers={"Accept": "application/vnd.github.diff"},
         )
+        if resp.status_code == 406:
+            return ""
         resp.raise_for_status()
         return resp.text
 
@@ -126,3 +131,21 @@ class GitHubClient:
             f"/repos/{owner}/{repo}/pulls",
             params={"state": "open", "per_page": "100"},
         )
+
+    async def count_user_prs(self, owner: str, repo: str, username: str) -> int:
+        """Count merged PRs by a user in a repo via Search API.
+
+        Returns 0 on rate limit or other errors to avoid blocking ingestion.
+        """
+        query = f"repo:{owner}/{repo} author:{username} type:pr is:merged"
+        try:
+            resp = await self.client.get(
+                "/search/issues",
+                params={"q": query, "per_page": "1"},
+            )
+            if resp.status_code in (403, 422, 429):
+                return 0
+            resp.raise_for_status()
+            return resp.json().get("total_count", 0)
+        except (httpx.HTTPStatusError, httpx.TimeoutException):
+            return 0

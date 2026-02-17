@@ -196,7 +196,9 @@ def check_temporal_clustering(
         if account_age < timedelta(days=threshold_days) and time_diff < window:
             clustered.append(other)
 
-    if len(clustered) >= 2:
+    # Scale threshold with context size: need 3+ clustered for small sets, 5+ for large
+    min_cluster = 3 if len(recent_prs) < 50 else 5
+    if len(clustered) >= min_cluster:
         return SuspicionFlag(
             rule_id="temporal_clustering",
             severity=FlagSeverity.HIGH,

@@ -91,12 +91,16 @@ class TestIngestPR:
         respx.get(f"{BASE_URL}/users/contributor123").mock(
             return_value=httpx.Response(200, json=user_data)
         )
+        respx.get(url__startswith=f"{BASE_URL}/search/issues").mock(
+            return_value=httpx.Response(200, json={"total_count": 5})
+        )
 
         async with GitHubClient(api_url=BASE_URL) as client:
             pr = await ingest_pr("nicoseng", "OpenClaw", 42, client)
 
         assert pr.number == 42
         assert pr.author.login == "contributor123"
+        assert pr.author.contributions_to_repo == 5
 
     @respx.mock
     @pytest.mark.asyncio
@@ -158,6 +162,10 @@ class TestIngestPR:
                     "login": f"user{num}", "created_at": "2025-01-01T00:00:00Z"
                 })
             )
+
+        respx.get(url__startswith=f"{BASE_URL}/search/issues").mock(
+            return_value=httpx.Response(200, json={"total_count": 0})
+        )
 
         async with GitHubClient(api_url=BASE_URL) as client:
             prs = await ingest_batch("owner", "repo", [1, 2], client)

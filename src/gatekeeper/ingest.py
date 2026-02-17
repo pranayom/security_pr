@@ -41,13 +41,14 @@ def _normalize_pr(
     files_data: list[dict],
     diff_text: str,
     user_data: dict | None = None,
+    contributions_to_repo: int = 0,
 ) -> PRMetadata:
     """Transform raw GitHub API responses into PRMetadata."""
     user = pr_data.get("user", {})
     author = PRAuthor(
         login=user.get("login", "unknown"),
         account_created_at=_parse_datetime(user_data.get("created_at")) if user_data else None,
-        contributions_to_repo=0,
+        contributions_to_repo=contributions_to_repo,
     )
 
     files = [
@@ -109,10 +110,14 @@ async def ingest_pr(
 
     user_login = pr_data.get("user", {}).get("login", "")
     user_data = None
+    contributions = 0
     if user_login:
-        user_data = await client.get_user(user_login)
+        user_data, contributions = await asyncio.gather(
+            client.get_user(user_login),
+            client.count_user_prs(owner, repo, user_login),
+        )
 
-    pr_metadata = _normalize_pr(pr_data, files_data, diff_text, user_data)
+    pr_metadata = _normalize_pr(pr_data, files_data, diff_text, user_data, contributions)
 
     if cache:
         cache.put_pr(owner, repo, number, pr_metadata.model_dump(mode="json"))

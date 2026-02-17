@@ -189,6 +189,7 @@ class TestCheckTemporalClustering:
         recent = [
             _make_pr(number=2, login="user2", created_at=now - timedelta(hours=2), account_age_days=20),
             _make_pr(number=3, login="user3", created_at=now - timedelta(hours=5), account_age_days=10),
+            _make_pr(number=4, login="user4", created_at=now - timedelta(hours=8), account_age_days=15),
         ]
         flag = check_temporal_clustering(pr, recent)
         assert flag is not None
