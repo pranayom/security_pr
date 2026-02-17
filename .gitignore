@@ -12,3 +12,6 @@ venv/
 .eggs/
 *.so
 .mypy_cache/
+.mcp.json
+mcp_stderr*.log
+.gatekeeper_cache.db

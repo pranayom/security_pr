@@ -31,9 +31,19 @@ class GatekeeperSettings(BaseSettings):
     ]
     min_test_ratio: float = 0.1
 
-    # Tier 3: Vision
+    # Tier 3: Vision — LLM provider
+    llm_provider: str = "openrouter"  # "openrouter" or "claude_cli"
+
+    # OpenRouter (primary — free, works in CI)
+    openrouter_api_key: str = ""
+    openrouter_model: str = "openai/gpt-oss-120b:free"
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_timeout_seconds: int = 60
+
+    # Claude CLI (fallback — requires local Max subscription)
     claude_command: str = "claude"
     claude_timeout_seconds: int = 120
+
     vision_document_path: str = ""
     enable_tier3: bool = True
 

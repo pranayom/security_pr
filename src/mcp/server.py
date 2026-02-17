@@ -69,7 +69,7 @@ async def assess_contribution_risk_tool(
 
     Tier 1: Embedding-based dedup (flags duplicate PRs).
     Tier 2: Heuristic suspicion scoring (new accounts, sensitive paths, dep changes, etc.).
-    Tier 3: LLM vision alignment via claude --print (optional).
+    Tier 3: LLM vision alignment via OpenRouter free models or claude --print (optional).
 
     Returns a JSON scorecard with verdict (FAST_TRACK / REVIEW_REQUIRED / RECOMMEND_CLOSE),
     per-dimension scores, and specific flags with explanations.
@@ -92,6 +92,7 @@ async def assess_contribution_risk_tool(
         pr,
         vision_document_path=vision_document_path,
         enable_tier3=enable_tier3,
+        llm_provider="",  # uses config default (openrouter)
     )
     return scorecard.model_dump_json(indent=2)
 

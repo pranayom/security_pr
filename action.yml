@@ -1,0 +1,76 @@
+name: "PR Triage — Gatekeeper"
+description: "Three-tier PR risk assessment: embedding dedup, suspicion heuristics, and LLM vision alignment."
+author: "mcp-ai-auditor"
+
+branding:
+  icon: "shield"
+  color: "blue"
+
+inputs:
+  github_token:
+    description: "GitHub token for API access (usually secrets.GITHUB_TOKEN)"
+    required: true
+  vision_document:
+    description: "Path to YAML vision document (relative to repo root)"
+    required: false
+    default: ""
+  openrouter_api_key:
+    description: "OpenRouter API key for Tier 3 vision alignment (free models, $0 cost). Tier 3 skipped if not provided."
+    required: false
+    default: ""
+  openrouter_model:
+    description: "OpenRouter model to use for Tier 3"
+    required: false
+    default: "openai/gpt-oss-120b:free"
+  duplicate_threshold:
+    description: "Cosine similarity threshold for duplicate detection (0.0-1.0)"
+    required: false
+    default: "0.9"
+  suspicion_threshold:
+    description: "Suspicion score threshold for flagging PRs (0.0-1.0)"
+    required: false
+    default: "0.6"
+  post_comment:
+    description: "Post scorecard as a PR comment (true/false)"
+    required: false
+    default: "true"
+
+outputs:
+  verdict:
+    description: "FAST_TRACK, REVIEW_REQUIRED, or RECOMMEND_CLOSE"
+    value: ${{ steps.triage.outputs.verdict }}
+  scorecard_json:
+    description: "Full scorecard as JSON"
+    value: ${{ steps.triage.outputs.scorecard_json }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        pip install httpx pydantic pydantic-settings pyyaml sentence-transformers numpy
+
+    - name: Run Gatekeeper triage
+      id: triage
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+        AUDITOR_GK_GITHUB_TOKEN: ${{ inputs.github_token }}
+        AUDITOR_GK_OPENROUTER_API_KEY: ${{ inputs.openrouter_api_key }}
+        AUDITOR_GK_OPENROUTER_MODEL: ${{ inputs.openrouter_model }}
+        AUDITOR_GK_DUPLICATE_THRESHOLD: ${{ inputs.duplicate_threshold }}
+        AUDITOR_GK_SUSPICION_THRESHOLD: ${{ inputs.suspicion_threshold }}
+        INPUT_VISION_DOCUMENT: ${{ inputs.vision_document }}
+        INPUT_POST_COMMENT: ${{ inputs.post_comment }}
+      run: |
+        cd ${{ github.action_path }}
+        python action_entrypoint.py \
+          --owner "${{ github.repository_owner }}" \
+          --repo "${{ github.event.repository.name }}" \
+          --pr-number "${{ github.event.pull_request.number }}"
