@@ -22,8 +22,8 @@ principles:
 
   - name: Skills Ecosystem Integrity
     description: >
-      The ClawHub marketplace has been targeted by supply chain attacks
-      (341+ malicious skills identified). Any PR touching skill loading,
+      The ClawHub marketplace is a known supply chain attack surface.
+      Any PR touching skill loading,
       skill execution paths, or extension mechanisms must include tests
       and security review. Skills execute with system-level permissions.
 
