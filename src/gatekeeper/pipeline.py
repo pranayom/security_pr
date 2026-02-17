@@ -50,7 +50,10 @@ async def run_pipeline(
     # Load vision document early so focus_areas can feed into heuristics
     vision = None
     if vision_document_path:
-        vision = load_vision_document(vision_document_path)
+        try:
+            vision = load_vision_document(vision_document_path)
+        except FileNotFoundError:
+            print(f"Warning: Vision document not found at '{vision_document_path}' — skipping")
 
     # --- Tier 1: Dedup ---
     dedup_result: DedupResult
