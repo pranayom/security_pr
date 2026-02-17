@@ -102,6 +102,12 @@ async def main(owner: str, repo: str, pr_number: int) -> None:
     vision_path = os.environ.get("INPUT_VISION_DOCUMENT", "")
     post_comment = os.environ.get("INPUT_POST_COMMENT", "true").lower() == "true"
 
+    # Resolve vision document path relative to the repo workspace, not the action directory
+    if vision_path and not os.path.isabs(vision_path):
+        workspace = os.environ.get("GITHUB_WORKSPACE", "")
+        if workspace:
+            vision_path = os.path.join(workspace, vision_path)
+
     # Determine Tier 3 availability
     enforce_vision = os.environ.get("INPUT_ENFORCE_VISION", "false").lower() == "true"
     has_openrouter = bool(os.environ.get("AUDITOR_GK_OPENROUTER_API_KEY", ""))
