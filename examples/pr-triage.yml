@@ -1,0 +1,34 @@
+# Copy this file to .github/workflows/pr-triage.yml in your repository.
+# See: https://github.com/pranayom/security_pr
+
+name: PR Triage
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pranayom/security_pr@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+          # Optional: path to your project's vision document (YAML)
+          # Defines your project's principles, anti-patterns, and sensitive paths.
+          # vision_document: ".github/vision.yaml"
+
+          # Optional: OpenRouter API key for Tier 3 LLM vision alignment ($0 cost).
+          # Get a free key at https://openrouter.ai/keys
+          # Tier 3 is skipped if not provided — you still get dedup + heuristics.
+          # openrouter_api_key: ${{ secrets.OPENROUTER_API_KEY }}
+
+          # Optional: set to true after reviewing your vision document
+          # enforce_vision: "true"
