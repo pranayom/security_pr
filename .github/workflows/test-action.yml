@@ -1,0 +1,51 @@
+name: Self-test Action
+
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  self-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Gatekeeper on this PR
+        id: gatekeeper
+        uses: ./
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          post_comment: "true"
+
+      - name: Verify outputs
+        shell: bash
+        run: |
+          verdict="${{ steps.gatekeeper.outputs.verdict }}"
+          echo "Verdict: $verdict"
+
+          if [ -z "$verdict" ]; then
+            echo "::error::verdict output is empty"
+            exit 1
+          fi
+
+          case "$verdict" in
+            fast_track|review_required|recommend_close)
+              echo "Valid verdict: $verdict"
+              ;;
+            *)
+              echo "::error::Unexpected verdict value: $verdict"
+              exit 1
+              ;;
+          esac
+
+          scorecard='${{ steps.gatekeeper.outputs.scorecard_json }}'
+          if [ -z "$scorecard" ]; then
+            echo "::error::scorecard_json output is empty"
+            exit 1
+          fi
+          echo "Scorecard JSON length: ${#scorecard}"
