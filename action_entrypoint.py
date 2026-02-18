@@ -122,17 +122,25 @@ async def main(owner: str, repo: str, pr_number: int) -> None:
 
     # Ingest PR
     print(f"Assessing PR #{pr_number} on {owner}/{repo}...")
-    async with GitHubClient() as client:
-        pr = await ingest_pr(owner, repo, pr_number, client)
+    try:
+        async with GitHubClient() as client:
+            pr = await ingest_pr(owner, repo, pr_number, client)
+    except Exception as exc:
+        print(f"::error::Failed to ingest PR #{pr_number}: {exc}")
+        sys.exit(1)
 
     print(f"PR: #{pr.number} - {pr.title} ({len(pr.files)} files)")
 
     # Run pipeline
-    scorecard = await run_pipeline(
-        pr,
-        vision_document_path=vision_path,
-        enable_tier3=enable_tier3,
-    )
+    try:
+        scorecard = await run_pipeline(
+            pr,
+            vision_document_path=vision_path,
+            enable_tier3=enable_tier3,
+        )
+    except Exception as exc:
+        print(f"::error::Pipeline failed for PR #{pr_number}: {exc}")
+        sys.exit(1)
 
     verdict = scorecard.verdict.value.upper().replace("_", " ")
     print(f"Verdict: {verdict}")
