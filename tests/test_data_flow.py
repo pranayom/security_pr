@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from src.analysis.data_flow import trace_data_flow
+from mcp_ai_auditor.analysis.data_flow import trace_data_flow
 
 
 FIXTURES = Path(__file__).parent / "fixtures"

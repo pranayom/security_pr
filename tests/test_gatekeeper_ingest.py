@@ -7,9 +7,9 @@ import httpx
 import pytest
 import respx
 
-from src.gatekeeper.cache import PRCache
-from src.gatekeeper.github_client import GitHubClient
-from src.gatekeeper.ingest import (
+from mcp_ai_auditor.gatekeeper.cache import PRCache
+from mcp_ai_auditor.gatekeeper.github_client import GitHubClient
+from mcp_ai_auditor.gatekeeper.ingest import (
     _extract_linked_issues,
     _normalize_pr,
     _parse_datetime,

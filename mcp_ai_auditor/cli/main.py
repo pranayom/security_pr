@@ -6,9 +6,9 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from src.scanners.vulnerability_scanner import scan_vulnerabilities
-from src.analysis.data_flow import trace_data_flow
-from src.cve.checker import check_cve
+from mcp_ai_auditor.scanners.vulnerability_scanner import scan_vulnerabilities
+from mcp_ai_auditor.analysis.data_flow import trace_data_flow
+from mcp_ai_auditor.cve.checker import check_cve
 
 app = typer.Typer(
     name="auditor",
@@ -139,10 +139,10 @@ def assess(
     json_output: bool = typer.Option(False, "--json", help="Output raw JSON scorecard"),
 ):
     """Assess a GitHub PR for contribution risk (three-tier gated pipeline)."""
-    from src.gatekeeper.github_client import GitHubClient
-    from src.gatekeeper.ingest import ingest_pr
-    from src.gatekeeper.pipeline import run_pipeline
-    from src.gatekeeper.scorecard import render_scorecard, scorecard_to_json
+    from mcp_ai_auditor.gatekeeper.github_client import GitHubClient
+    from mcp_ai_auditor.gatekeeper.ingest import ingest_pr
+    from mcp_ai_auditor.gatekeeper.pipeline import run_pipeline
+    from mcp_ai_auditor.gatekeeper.scorecard import render_scorecard, scorecard_to_json
 
     async def _run():
         async with GitHubClient() as client:

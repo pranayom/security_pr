@@ -6,9 +6,9 @@ import asyncio
 import re
 from datetime import datetime
 
-from src.gatekeeper.models import PRAuthor, PRFileChange, PRMetadata
-from src.gatekeeper.github_client import GitHubClient
-from src.gatekeeper.cache import PRCache
+from mcp_ai_auditor.gatekeeper.models import PRAuthor, PRFileChange, PRMetadata
+from mcp_ai_auditor.gatekeeper.github_client import GitHubClient
+from mcp_ai_auditor.gatekeeper.cache import PRCache
 
 
 _ISSUE_PATTERN = re.compile(

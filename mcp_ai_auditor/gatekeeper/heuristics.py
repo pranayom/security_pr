@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from src.gatekeeper.config import gatekeeper_settings
-from src.gatekeeper.models import (
+from mcp_ai_auditor.gatekeeper.config import gatekeeper_settings
+from mcp_ai_auditor.gatekeeper.models import (
     FlagSeverity,
     HeuristicsResult,
     PRMetadata,

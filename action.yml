@@ -58,7 +58,8 @@ runs:
     - name: Install dependencies
       shell: bash
       run: |
-        pip install httpx pydantic pydantic-settings pyyaml sentence-transformers numpy
+        cd ${{ github.action_path }}
+        pip install ".[gatekeeper]"
 
     - name: Run Gatekeeper triage
       id: triage

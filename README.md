@@ -8,7 +8,36 @@ Tested on [OpenClaw](https://github.com/openclaw/openclaw) (3,368 open PRs): cut
 
 ---
 
-## Quick Start
+## Installation
+
+```bash
+# Core MCP tools (vulnerability scanner, data flow, CVE checker)
+pip install mcp-ai-auditor
+
+# With PR triage / gatekeeper pipeline
+pip install "mcp-ai-auditor[gatekeeper]"
+
+# For development
+pip install -e ".[dev,gatekeeper]"
+```
+
+### CLI usage
+
+```bash
+auditor scan /path/to/project        # vulnerability scan
+auditor trace /path/to/file.py       # data flow analysis
+auditor cve /path/to/requirements.txt # CVE check
+```
+
+### MCP server
+
+```bash
+python -m mcp_ai_auditor.mcp         # start the MCP server
+```
+
+---
+
+## Quick Start (GitHub Action)
 
 Copy this workflow into `.github/workflows/pr-triage.yml` in your repo:
 

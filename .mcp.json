@@ -2,7 +2,7 @@
   "mcpServers": {
     "mcp-ai-auditor": {
       "command": "C:\\Users\\prana\\anaconda3\\python.exe",
-      "args": ["-m", "src.mcp.server"],
+      "args": ["-m", "mcp_ai_auditor.mcp.server"],
       "cwd": "C:\\projects\\adhoc_projects\\llm_usecases\\security_pr"
     }
   }

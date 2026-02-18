@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from src.gatekeeper.models import (
+from mcp_ai_auditor.gatekeeper.models import (
     PRAuthor,
     PRFileChange,
     PRMetadata,
@@ -18,8 +18,8 @@ from src.gatekeeper.models import (
     Verdict,
     VisionAlignmentResult,
 )
-from src.gatekeeper.pipeline import run_pipeline
-from src.gatekeeper.vision import load_vision_document
+from mcp_ai_auditor.gatekeeper.pipeline import run_pipeline
+from mcp_ai_auditor.gatekeeper.vision import load_vision_document
 
 VISION_DOC = str(Path(__file__).parent.parent / "vision_documents" / "openclaw.yaml")
 
@@ -309,7 +309,7 @@ class TestOpenClawFocusAreasIntegration:
         mock_vision_result = VisionAlignmentResult(
             outcome=TierOutcome.PASS, alignment_score=0.8,
         )
-        with patch("src.gatekeeper.pipeline.run_vision_alignment", new_callable=AsyncMock, return_value=mock_vision_result):
+        with patch("mcp_ai_auditor.gatekeeper.pipeline.run_vision_alignment", new_callable=AsyncMock, return_value=mock_vision_result):
             scorecard_with_vision = await run_pipeline(
                 pr, vision_document_path=VISION_DOC, enable_tier3=True,
             )
@@ -334,7 +334,7 @@ class TestOpenClawFocusAreasIntegration:
         mock_vision_result = VisionAlignmentResult(
             outcome=TierOutcome.PASS, alignment_score=0.9,
         )
-        with patch("src.gatekeeper.pipeline.run_vision_alignment", new_callable=AsyncMock, return_value=mock_vision_result):
+        with patch("mcp_ai_auditor.gatekeeper.pipeline.run_vision_alignment", new_callable=AsyncMock, return_value=mock_vision_result):
             scorecard = await run_pipeline(
                 pr, vision_document_path=VISION_DOC, enable_tier3=True,
             )
@@ -366,7 +366,7 @@ class TestOpenClawVisionTier3:
             concerns=[],
         )
 
-        with patch("src.gatekeeper.pipeline.run_vision_alignment", new_callable=AsyncMock, return_value=mock_vision_result):
+        with patch("mcp_ai_auditor.gatekeeper.pipeline.run_vision_alignment", new_callable=AsyncMock, return_value=mock_vision_result):
             scorecard = await run_pipeline(
                 pr,
                 vision_document_path=VISION_DOC,
@@ -398,7 +398,7 @@ class TestOpenClawVisionTier3:
             concerns=["Crypto/DeFi features are explicitly unwelcome"],
         )
 
-        with patch("src.gatekeeper.pipeline.run_vision_alignment", new_callable=AsyncMock, return_value=mock_vision_result):
+        with patch("mcp_ai_auditor.gatekeeper.pipeline.run_vision_alignment", new_callable=AsyncMock, return_value=mock_vision_result):
             scorecard = await run_pipeline(
                 pr,
                 vision_document_path=VISION_DOC,

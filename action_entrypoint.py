@@ -2,17 +2,13 @@
 
 import argparse
 import asyncio
-import json
 import os
 import sys
 
-# Add the repo root to sys.path so src.gatekeeper imports work
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from src.gatekeeper.github_client import GitHubClient
-from src.gatekeeper.ingest import ingest_pr
-from src.gatekeeper.pipeline import run_pipeline
-from src.gatekeeper.models import Verdict
+from mcp_ai_auditor.gatekeeper.github_client import GitHubClient
+from mcp_ai_auditor.gatekeeper.ingest import ingest_pr
+from mcp_ai_auditor.gatekeeper.pipeline import run_pipeline
+from mcp_ai_auditor.gatekeeper.models import Verdict
 
 
 def _format_comment(scorecard) -> str:

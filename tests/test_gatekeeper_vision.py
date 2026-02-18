@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from src.gatekeeper.models import PRAuthor, PRMetadata, TierOutcome
-from src.gatekeeper.vision import (
+from mcp_ai_auditor.gatekeeper.models import PRAuthor, PRMetadata, TierOutcome
+from mcp_ai_auditor.gatekeeper.vision import (
     SCORECARD_SCHEMA,
     _build_prompt,
     _parse_response,
@@ -133,7 +133,7 @@ class TestOpenRouterProvider:
 
         mock_response = httpx.Response(200, json=response_body)
 
-        with patch("src.gatekeeper.vision.httpx.AsyncClient") as mock_client_cls:
+        with patch("mcp_ai_auditor.gatekeeper.vision.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -179,7 +179,7 @@ class TestOpenRouterProvider:
 
         mock_response = httpx.Response(200, json=response_body)
 
-        with patch("src.gatekeeper.vision.httpx.AsyncClient") as mock_client_cls:
+        with patch("mcp_ai_auditor.gatekeeper.vision.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -202,7 +202,7 @@ class TestOpenRouterProvider:
             author=PRAuthor(login="u"),
         )
 
-        with patch("src.gatekeeper.vision.gatekeeper_settings") as mock_settings:
+        with patch("mcp_ai_auditor.gatekeeper.vision.gatekeeper_settings") as mock_settings:
             mock_settings.llm_provider = "openrouter"
             mock_settings.openrouter_api_key = ""
             mock_settings.openrouter_model = "openai/gpt-oss-120b:free"
@@ -224,7 +224,7 @@ class TestOpenRouterProvider:
 
         mock_response = httpx.Response(429, text="Rate limited")
 
-        with patch("src.gatekeeper.vision.httpx.AsyncClient") as mock_client_cls:
+        with patch("mcp_ai_auditor.gatekeeper.vision.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -246,7 +246,7 @@ class TestOpenRouterProvider:
             author=PRAuthor(login="u"),
         )
 
-        with patch("src.gatekeeper.vision.httpx.AsyncClient") as mock_client_cls:
+        with patch("mcp_ai_auditor.gatekeeper.vision.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(side_effect=httpx.ReadTimeout("timed out"))
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -276,7 +276,7 @@ class TestOpenRouterProvider:
 
         mock_response = httpx.Response(200, json=response_body)
 
-        with patch("src.gatekeeper.vision.httpx.AsyncClient") as mock_client_cls:
+        with patch("mcp_ai_auditor.gatekeeper.vision.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -302,7 +302,7 @@ class TestOpenRouterProvider:
         response_body = {"error": "something went wrong"}
         mock_response = httpx.Response(200, json=response_body)
 
-        with patch("src.gatekeeper.vision.httpx.AsyncClient") as mock_client_cls:
+        with patch("mcp_ai_auditor.gatekeeper.vision.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -336,7 +336,7 @@ class TestClaudeCliProvider:
         )
         mock_process.returncode = 0
 
-        with patch("src.gatekeeper.vision.asyncio.create_subprocess_exec", return_value=mock_process):
+        with patch("mcp_ai_auditor.gatekeeper.vision.asyncio.create_subprocess_exec", return_value=mock_process):
             result = await run_vision_alignment(pr, vision, provider="claude_cli")
 
         assert result.outcome == TierOutcome.PASS
@@ -365,7 +365,7 @@ class TestClaudeCliProvider:
         )
         mock_process.returncode = 0
 
-        with patch("src.gatekeeper.vision.asyncio.create_subprocess_exec", return_value=mock_process):
+        with patch("mcp_ai_auditor.gatekeeper.vision.asyncio.create_subprocess_exec", return_value=mock_process):
             result = await run_vision_alignment(pr, vision, provider="claude_cli")
 
         assert result.outcome == TierOutcome.GATED
@@ -381,7 +381,7 @@ class TestClaudeCliProvider:
         )
 
         with patch(
-            "src.gatekeeper.vision.asyncio.create_subprocess_exec",
+            "mcp_ai_auditor.gatekeeper.vision.asyncio.create_subprocess_exec",
             side_effect=FileNotFoundError("claude not found"),
         ):
             result = await run_vision_alignment(
@@ -402,7 +402,7 @@ class TestClaudeCliProvider:
         mock_process = AsyncMock()
         mock_process.communicate = AsyncMock(side_effect=asyncio.TimeoutError())
 
-        with patch("src.gatekeeper.vision.asyncio.create_subprocess_exec", return_value=mock_process):
+        with patch("mcp_ai_auditor.gatekeeper.vision.asyncio.create_subprocess_exec", return_value=mock_process):
             result = await run_vision_alignment(
                 pr, vision, provider="claude_cli", timeout_seconds=1,
             )
@@ -424,7 +424,7 @@ class TestClaudeCliProvider:
         )
         mock_process.returncode = 1
 
-        with patch("src.gatekeeper.vision.asyncio.create_subprocess_exec", return_value=mock_process):
+        with patch("mcp_ai_auditor.gatekeeper.vision.asyncio.create_subprocess_exec", return_value=mock_process):
             result = await run_vision_alignment(pr, vision, provider="claude_cli")
 
         assert result.outcome == TierOutcome.ERROR
@@ -443,7 +443,7 @@ class TestClaudeCliProvider:
         )
         mock_process.returncode = 0
 
-        with patch("src.gatekeeper.vision.asyncio.create_subprocess_exec", return_value=mock_process):
+        with patch("mcp_ai_auditor.gatekeeper.vision.asyncio.create_subprocess_exec", return_value=mock_process):
             result = await run_vision_alignment(pr, vision, provider="claude_cli")
 
         assert result.outcome == TierOutcome.ERROR
@@ -467,6 +467,6 @@ class TestProviderDispatch:
     @pytest.mark.asyncio
     async def test_default_provider_is_openrouter(self):
         """Verify the default provider from settings is openrouter."""
-        from src.gatekeeper.config import GatekeeperSettings
+        from mcp_ai_auditor.gatekeeper.config import GatekeeperSettings
         settings = GatekeeperSettings()
         assert settings.llm_provider == "openrouter"

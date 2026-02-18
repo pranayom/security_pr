@@ -6,7 +6,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from src.gatekeeper.models import AssessmentScorecard, FlagSeverity, Verdict
+from mcp_ai_auditor.gatekeeper.models import AssessmentScorecard, FlagSeverity, Verdict
 
 
 _VERDICT_STYLES = {

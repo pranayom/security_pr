@@ -3,7 +3,7 @@
 import ast
 from pathlib import Path
 
-from src.models import DataFlowResult, TaintFlow
+from mcp_ai_auditor.models import DataFlowResult, TaintFlow
 
 
 # Sources of tainted (user-controlled) data

@@ -5,9 +5,9 @@ import json
 
 from mcp.server.fastmcp import FastMCP
 
-from src.scanners.vulnerability_scanner import scan_vulnerabilities
-from src.analysis.data_flow import trace_data_flow
-from src.cve.checker import check_cve
+from mcp_ai_auditor.scanners.vulnerability_scanner import scan_vulnerabilities
+from mcp_ai_auditor.analysis.data_flow import trace_data_flow
+from mcp_ai_auditor.cve.checker import check_cve
 
 mcp = FastMCP("mcp-ai-auditor")
 
@@ -81,9 +81,9 @@ async def assess_contribution_risk_tool(
         vision_document_path: Path to YAML vision document (optional, enables Tier 3).
         enable_tier3: Whether to run Tier 3 vision alignment (default True).
     """
-    from src.gatekeeper.github_client import GitHubClient
-    from src.gatekeeper.ingest import ingest_pr
-    from src.gatekeeper.pipeline import run_pipeline
+    from mcp_ai_auditor.gatekeeper.github_client import GitHubClient
+    from mcp_ai_auditor.gatekeeper.ingest import ingest_pr
+    from mcp_ai_auditor.gatekeeper.pipeline import run_pipeline
 
     async with GitHubClient() as client:
         pr = await ingest_pr(owner, repo, pr_number, client)

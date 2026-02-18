@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from src.gatekeeper.models import (
+from mcp_ai_auditor.gatekeeper.models import (
     AssessmentScorecard,
     DedupResult,
     HeuristicsResult,
@@ -19,7 +19,7 @@ from src.gatekeeper.models import (
     Verdict,
     VisionAlignmentResult,
 )
-from src.gatekeeper.pipeline import run_pipeline
+from mcp_ai_auditor.gatekeeper.pipeline import run_pipeline
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -167,8 +167,8 @@ class TestPipelineGating:
             concerns=[],
         )
 
-        with patch("src.gatekeeper.pipeline.run_vision_alignment", new_callable=AsyncMock, return_value=mock_vision_result):
-            with patch("src.gatekeeper.pipeline.load_vision_document"):
+        with patch("mcp_ai_auditor.gatekeeper.pipeline.run_vision_alignment", new_callable=AsyncMock, return_value=mock_vision_result):
+            with patch("mcp_ai_auditor.gatekeeper.pipeline.load_vision_document"):
                 scorecard = await run_pipeline(
                     pr,
                     vision_document_path=str(FIXTURES / "sample_vision_document.yaml"),
@@ -199,8 +199,8 @@ class TestPipelineGating:
             concerns=["Bypasses auth"],
         )
 
-        with patch("src.gatekeeper.pipeline.run_vision_alignment", new_callable=AsyncMock, return_value=mock_vision_result):
-            with patch("src.gatekeeper.pipeline.load_vision_document"):
+        with patch("mcp_ai_auditor.gatekeeper.pipeline.run_vision_alignment", new_callable=AsyncMock, return_value=mock_vision_result):
+            with patch("mcp_ai_auditor.gatekeeper.pipeline.load_vision_document"):
                 scorecard = await run_pipeline(
                     pr,
                     vision_document_path="vision.yaml",
@@ -228,8 +228,8 @@ class TestPipelineGating:
             concerns=["claude CLI not found"],
         )
 
-        with patch("src.gatekeeper.pipeline.run_vision_alignment", new_callable=AsyncMock, return_value=mock_vision_result):
-            with patch("src.gatekeeper.pipeline.load_vision_document"):
+        with patch("mcp_ai_auditor.gatekeeper.pipeline.run_vision_alignment", new_callable=AsyncMock, return_value=mock_vision_result):
+            with patch("mcp_ai_auditor.gatekeeper.pipeline.load_vision_document"):
                 scorecard = await run_pipeline(
                     pr,
                     vision_document_path="vision.yaml",

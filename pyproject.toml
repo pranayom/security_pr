@@ -6,7 +6,24 @@ build-backend = "hatchling.build"
 name = "mcp-ai-auditor"
 version = "0.1.0"
 description = "AI-powered security auditor — MCP tools for vulnerability scanning, data flow analysis, and CVE checking"
+readme = "README.md"
+license = "MIT"
 requires-python = ">=3.11"
+authors = [
+    { name = "Pranay Om" },
+]
+keywords = ["security", "mcp", "auditor", "vulnerability", "cve", "pr-triage", "gatekeeper"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
+]
 dependencies = [
     "mcp[cli]>=1.2.0",
     "pydantic>=2.0",
@@ -26,13 +43,20 @@ dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.23",
     "respx>=0.20",
+    "build>=1.0",
+    "twine>=5.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/pranayom/security_pr"
+Repository = "https://github.com/pranayom/security_pr"
+Issues = "https://github.com/pranayom/security_pr/issues"
+
 [project.scripts]
-auditor = "src.cli.main:app"
+auditor = "mcp_ai_auditor.cli.main:app"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src"]
+packages = ["mcp_ai_auditor"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

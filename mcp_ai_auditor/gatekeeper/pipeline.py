@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.gatekeeper.models import (
+from mcp_ai_auditor.gatekeeper.models import (
     AssessmentScorecard,
     DedupResult,
     DimensionScore,
@@ -13,9 +13,9 @@ from src.gatekeeper.models import (
     Verdict,
     VisionAlignmentResult,
 )
-from src.gatekeeper.dedup import check_duplicates
-from src.gatekeeper.heuristics import run_heuristics
-from src.gatekeeper.vision import load_vision_document, run_vision_alignment
+from mcp_ai_auditor.gatekeeper.dedup import check_duplicates
+from mcp_ai_auditor.gatekeeper.heuristics import run_heuristics
+from mcp_ai_auditor.gatekeeper.vision import load_vision_document, run_vision_alignment
 
 
 async def run_pipeline(
