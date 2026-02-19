@@ -2,9 +2,9 @@
 
 import httpx
 
-from mcp_ai_auditor.config import settings
-from mcp_ai_auditor.models import CVECheckResult, CVERecord, Dependency, Severity
-from mcp_ai_auditor.cve.parsers import find_and_parse_dependencies
+from oss_maintainer_toolkit.config import settings
+from oss_maintainer_toolkit.models import CVECheckResult, CVERecord, Dependency, Severity
+from oss_maintainer_toolkit.cve.parsers import find_and_parse_dependencies
 
 
 # Map ecosystem names for OSV.dev

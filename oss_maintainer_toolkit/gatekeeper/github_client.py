@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import httpx
 
-from mcp_ai_auditor.gatekeeper.config import gatekeeper_settings
+from oss_maintainer_toolkit.gatekeeper.config import gatekeeper_settings
 
 
 class GitHubClient:

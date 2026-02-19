@@ -4,7 +4,7 @@ import httpx
 import pytest
 import respx
 
-from mcp_ai_auditor.gatekeeper.github_client import GitHubClient
+from oss_maintainer_toolkit.gatekeeper.github_client import GitHubClient
 
 
 BASE_URL = "https://api.github.com"

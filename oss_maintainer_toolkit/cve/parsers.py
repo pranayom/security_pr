@@ -4,7 +4,7 @@ import json
 import re
 from pathlib import Path
 
-from mcp_ai_auditor.models import Dependency
+from oss_maintainer_toolkit.models import Dependency
 
 
 def parse_requirements_txt(file_path: Path) -> list[Dependency]:

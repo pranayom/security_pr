@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from mcp_ai_auditor.gatekeeper.heuristics import (
+from oss_maintainer_toolkit.gatekeeper.heuristics import (
     check_dependency_changes,
     check_first_contribution,
     check_large_diff_hiding,
@@ -14,7 +14,7 @@ from mcp_ai_auditor.gatekeeper.heuristics import (
     check_test_ratio,
     run_heuristics,
 )
-from mcp_ai_auditor.gatekeeper.models import (
+from oss_maintainer_toolkit.gatekeeper.models import (
     FlagSeverity,
     PRAuthor,
     PRFileChange,

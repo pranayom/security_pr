@@ -1,4 +1,4 @@
-"""Shared Pydantic models for mcp-ai-auditor."""
+"""Shared Pydantic models for oss-maintainer-toolkit."""
 
 from enum import Enum
 from pydantic import BaseModel

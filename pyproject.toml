@@ -3,16 +3,16 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "mcp-ai-auditor"
-version = "0.2.0"
-description = "AI-powered security auditor — MCP tools for vulnerability scanning, data flow analysis, and CVE checking"
+name = "oss-maintainer-toolkit"
+version = "0.3.0"
+description = "OSS Maintainer Toolkit — automated triage for PRs, issues, contributors, and review queues"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 authors = [
     { name = "Pranay Om" },
 ]
-keywords = ["security", "mcp", "auditor", "vulnerability", "cve", "pr-triage", "gatekeeper"]
+keywords = ["github", "pr-triage", "issue-triage", "maintainer", "governance", "dedup", "gatekeeper", "oss"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -21,7 +21,6 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "Topic :: Security",
     "Topic :: Software Development :: Quality Assurance",
 ]
 dependencies = [
@@ -48,15 +47,15 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/pranayom/security_pr"
-Repository = "https://github.com/pranayom/security_pr"
-Issues = "https://github.com/pranayom/security_pr/issues"
+Homepage = "https://github.com/pranayom/oss-maintainer-toolkit"
+Repository = "https://github.com/pranayom/oss-maintainer-toolkit"
+Issues = "https://github.com/pranayom/oss-maintainer-toolkit/issues"
 
 [project.scripts]
-auditor = "mcp_ai_auditor.cli.main:app"
+maintainer = "oss_maintainer_toolkit.cli.main:app"
 
 [tool.hatch.build.targets.wheel]
-packages = ["mcp_ai_auditor"]
+packages = ["oss_maintainer_toolkit"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

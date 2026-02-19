@@ -7,9 +7,9 @@ import httpx
 import pytest
 import respx
 
-from mcp_ai_auditor.gatekeeper.cache import PRCache
-from mcp_ai_auditor.gatekeeper.github_client import GitHubClient
-from mcp_ai_auditor.gatekeeper.ingest import (
+from oss_maintainer_toolkit.gatekeeper.cache import PRCache
+from oss_maintainer_toolkit.gatekeeper.github_client import GitHubClient
+from oss_maintainer_toolkit.gatekeeper.ingest import (
     _extract_linked_issues,
     _normalize_pr,
     _parse_datetime,

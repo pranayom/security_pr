@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "mcp-ai-auditor": {
+    "oss-maintainer-toolkit": {
       "command": "C:\\Users\\prana\\anaconda3\\python.exe",
-      "args": ["-m", "mcp_ai_auditor.mcp.server"],
+      "args": ["-m", "oss_maintainer_toolkit.mcp.server"],
       "cwd": "C:\\projects\\adhoc_projects\\llm_usecases\\security_pr"
     }
   }

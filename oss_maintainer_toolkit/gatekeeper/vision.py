@@ -11,15 +11,15 @@ import json
 
 import yaml
 
-from mcp_ai_auditor.gatekeeper.config import gatekeeper_settings
-from mcp_ai_auditor.gatekeeper.models import (
+from oss_maintainer_toolkit.gatekeeper.config import gatekeeper_settings
+from oss_maintainer_toolkit.gatekeeper.models import (
     PRMetadata,
     TierOutcome,
     VisionAlignmentResult,
     VisionDocument,
     VisionPrinciple,
 )
-from mcp_ai_auditor.gatekeeper.providers import (
+from oss_maintainer_toolkit.gatekeeper.providers import (
     ProviderError,
     call_anthropic,
     call_gemini,
@@ -253,7 +253,7 @@ async def run_vision_alignment(
         effective_provider = provider
         effective_key = api_key or openrouter_api_key  # backward compat for openrouter
     elif api_key:
-        from mcp_ai_auditor.gatekeeper.providers import detect_provider_from_key
+        from oss_maintainer_toolkit.gatekeeper.providers import detect_provider_from_key
         detected = detect_provider_from_key(api_key)
         effective_provider = detected or (provider if provider else gatekeeper_settings.llm_provider)
         effective_key = api_key

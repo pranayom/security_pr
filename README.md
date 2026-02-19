@@ -1,6 +1,6 @@
-# PR Triage — Gatekeeper
+# OSS Maintainer Toolkit
 
-A free GitHub Action that triages pull requests using a three-tier pipeline: embedding-based duplicate detection, suspicion heuristics, and optional LLM vision alignment.
+Automated triage for PRs, issues, contributors, and review queues. A free GitHub Action and CLI built on a three-tier pipeline: embedding-based dedup, heuristic scoring, and optional LLM vision alignment.
 
 **Every PR gets a verdict: `FAST_TRACK`, `REVIEW_REQUIRED`, or `RECOMMEND_CLOSE`.**
 
@@ -11,11 +11,11 @@ Tested on [OpenClaw](https://github.com/openclaw/openclaw) (3,368 open PRs): cut
 ## Installation
 
 ```bash
-# Core MCP tools (vulnerability scanner, data flow, CVE checker)
-pip install mcp-ai-auditor
+# Core toolkit
+pip install oss-maintainer-toolkit
 
 # With PR triage / gatekeeper pipeline
-pip install "mcp-ai-auditor[gatekeeper]"
+pip install "oss-maintainer-toolkit[gatekeeper]"
 
 # For development
 pip install -e ".[dev,gatekeeper]"
@@ -24,15 +24,13 @@ pip install -e ".[dev,gatekeeper]"
 ### CLI usage
 
 ```bash
-auditor scan /path/to/project        # vulnerability scan
-auditor trace /path/to/file.py       # data flow analysis
-auditor cve /path/to/requirements.txt # CVE check
+maintainer assess --owner openclaw --repo openclaw --pr 18675  # PR triage
 ```
 
 ### MCP server
 
 ```bash
-python -m mcp_ai_auditor.mcp         # start the MCP server
+python -m oss_maintainer_toolkit.mcp  # start the MCP server
 ```
 
 ---
@@ -57,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pranayom/security_pr@v1
+      - uses: pranayom/oss-maintainer-toolkit@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -75,10 +73,10 @@ PR opened
 [Tier 1: Embedding Dedup]     — sentence-transformers, cosine similarity
     |                            Duplicates -> RECOMMEND_CLOSE (stop)
     v
-[Tier 2: Suspicion Heuristics] — 7 deterministic rules, weighted scoring
+[Tier 2: Heuristic Scoring]   — 7 deterministic rules, weighted scoring
     |                            Flagged -> REVIEW_REQUIRED (stop)
     v
-[Tier 3: Vision Alignment]     — LLM compares PR against Vision Document (optional)
+[Tier 3: Vision Alignment]    — LLM compares PR against Vision Document (optional)
     |
     v
 FAST_TRACK
@@ -89,7 +87,7 @@ Tiers run strictly in sequence. Each tier is a gate — failures don't proceed t
 ### Tier 1 — Embedding Dedup (free, local)
 Computes semantic embeddings for PR title + description + diff using `all-MiniLM-L6-v2`. Flags duplicates above a cosine similarity threshold (default: 0.90).
 
-### Tier 2 — Suspicion Heuristics (free, deterministic)
+### Tier 2 — Heuristic Scoring (free, deterministic)
 Seven rules scored against PR metadata:
 
 | Rule | What it catches |
@@ -163,17 +161,30 @@ When the action runs on a PR, it posts a comment like:
 
 > ## &#x26A0; PR Triage: **REVIEW REQUIRED**
 >
-> > First-time contributor modifying security-sensitive paths without tests.
+> > First-time contributor modifying sensitive paths without tests.
 >
 > | Dimension | Score | Summary |
 > |---|---|---|
 > | Hygiene & Dedup | `++++++++--` 0.80 | No duplicates found |
-> | Supply Chain Suspicion | `++++------` 0.40 | New account + sensitive paths |
+> | Contributor Risk | `++++------` 0.40 | New account + sensitive paths |
 >
 > ### Flags
 > - [**HIGH**] **Sensitive Paths**: PR modifies `src/auth/oauth.ts`, `src/credentials/store.ts`
 > - [MEDIUM] **First Contribution**: No previously merged PRs from this author
 > - [MEDIUM] **Low Test Ratio**: 245 lines added, 0 test lines
+
+---
+
+## Roadmap
+
+- **PR Triage** — Shipped (v0.3.0)
+- **Issue Triage** — Dedup and classify issues
+- **Issue-to-PR Linking** — Suggest which PRs address which issues
+- **Label Automation** — Auto-classify PRs/issues into project label taxonomies
+- **Contributor Profiles** — Track contribution patterns and reliability
+- **Review Routing** — Suggest reviewers based on file ownership
+- **Smart Stale Detection** — Semantic staleness (superseded, merged elsewhere, blocked)
+- **Cross-PR Conflict Detection** — Surface PRs with overlapping file changes
 
 ---
 

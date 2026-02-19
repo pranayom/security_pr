@@ -2,12 +2,12 @@
 
 import pytest
 
-from mcp_ai_auditor.gatekeeper.dedup import (
+from oss_maintainer_toolkit.gatekeeper.dedup import (
     _build_embedding_text,
     check_duplicates,
     cosine_similarity,
 )
-from mcp_ai_auditor.gatekeeper.models import PRAuthor, PRFileChange, PRMetadata, TierOutcome
+from oss_maintainer_toolkit.gatekeeper.models import PRAuthor, PRFileChange, PRMetadata, TierOutcome
 
 
 def _make_pr(number: int, title: str = "Test PR", body: str = "", files: list | None = None) -> PRMetadata:

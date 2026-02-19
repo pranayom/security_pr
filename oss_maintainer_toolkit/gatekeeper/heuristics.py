@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from mcp_ai_auditor.gatekeeper.config import gatekeeper_settings
-from mcp_ai_auditor.gatekeeper.models import (
+from oss_maintainer_toolkit.gatekeeper.config import gatekeeper_settings
+from oss_maintainer_toolkit.gatekeeper.models import (
     FlagSeverity,
     HeuristicsResult,
     PRMetadata,

@@ -1,4 +1,4 @@
-"""Configuration for mcp-ai-auditor."""
+"""Configuration for oss-maintainer-toolkit."""
 
 from pydantic_settings import BaseSettings
 

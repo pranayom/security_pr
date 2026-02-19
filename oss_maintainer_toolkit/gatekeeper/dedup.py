@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from mcp_ai_auditor.gatekeeper.config import gatekeeper_settings
-from mcp_ai_auditor.gatekeeper.models import DedupResult, PRMetadata, TierOutcome
+from oss_maintainer_toolkit.gatekeeper.config import gatekeeper_settings
+from oss_maintainer_toolkit.gatekeeper.models import DedupResult, PRMetadata, TierOutcome
 
 _model = None
 

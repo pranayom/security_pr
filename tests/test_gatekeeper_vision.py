@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from mcp_ai_auditor.gatekeeper.models import PRAuthor, PRMetadata, TierOutcome
-from mcp_ai_auditor.gatekeeper.vision import (
+from oss_maintainer_toolkit.gatekeeper.models import PRAuthor, PRMetadata, TierOutcome
+from oss_maintainer_toolkit.gatekeeper.vision import (
     SCORECARD_SCHEMA,
     _build_prompt,
     _build_schema_instruction,
@@ -126,7 +126,7 @@ class TestOpenRouterProvider:
             "concerns": [],
         }
 
-        with patch("mcp_ai_auditor.gatekeeper.vision.call_openai_compatible", new_callable=AsyncMock) as mock_call:
+        with patch("oss_maintainer_toolkit.gatekeeper.vision.call_openai_compatible", new_callable=AsyncMock) as mock_call:
             mock_call.return_value = mock_data
 
             result = await run_vision_alignment(
@@ -153,7 +153,7 @@ class TestOpenRouterProvider:
             "concerns": ["Bypasses authentication checks"],
         }
 
-        with patch("mcp_ai_auditor.gatekeeper.vision.call_openai_compatible", new_callable=AsyncMock) as mock_call:
+        with patch("oss_maintainer_toolkit.gatekeeper.vision.call_openai_compatible", new_callable=AsyncMock) as mock_call:
             mock_call.return_value = mock_data
 
             result = await run_vision_alignment(
@@ -172,7 +172,7 @@ class TestOpenRouterProvider:
             author=PRAuthor(login="u"),
         )
 
-        with patch("mcp_ai_auditor.gatekeeper.vision.gatekeeper_settings") as mock_settings:
+        with patch("oss_maintainer_toolkit.gatekeeper.vision.gatekeeper_settings") as mock_settings:
             mock_settings.llm_provider = "openrouter"
             mock_settings.openrouter_api_key = ""
             mock_settings.openrouter_model = "openai/gpt-oss-120b:free"
@@ -194,9 +194,9 @@ class TestOpenRouterProvider:
             author=PRAuthor(login="u"),
         )
 
-        from mcp_ai_auditor.gatekeeper.providers import ProviderError
+        from oss_maintainer_toolkit.gatekeeper.providers import ProviderError
 
-        with patch("mcp_ai_auditor.gatekeeper.vision.call_openai_compatible", new_callable=AsyncMock) as mock_call:
+        with patch("oss_maintainer_toolkit.gatekeeper.vision.call_openai_compatible", new_callable=AsyncMock) as mock_call:
             mock_call.side_effect = ProviderError("API returned 429: Rate limited")
 
             result = await run_vision_alignment(
@@ -214,9 +214,9 @@ class TestOpenRouterProvider:
             author=PRAuthor(login="u"),
         )
 
-        from mcp_ai_auditor.gatekeeper.providers import ProviderError
+        from oss_maintainer_toolkit.gatekeeper.providers import ProviderError
 
-        with patch("mcp_ai_auditor.gatekeeper.vision.call_openai_compatible", new_callable=AsyncMock) as mock_call:
+        with patch("oss_maintainer_toolkit.gatekeeper.vision.call_openai_compatible", new_callable=AsyncMock) as mock_call:
             mock_call.side_effect = ProviderError("Request timed out after 60s")
 
             result = await run_vision_alignment(
@@ -234,9 +234,9 @@ class TestOpenRouterProvider:
             author=PRAuthor(login="u"),
         )
 
-        from mcp_ai_auditor.gatekeeper.providers import ProviderError
+        from oss_maintainer_toolkit.gatekeeper.providers import ProviderError
 
-        with patch("mcp_ai_auditor.gatekeeper.vision.call_openai_compatible", new_callable=AsyncMock) as mock_call:
+        with patch("oss_maintainer_toolkit.gatekeeper.vision.call_openai_compatible", new_callable=AsyncMock) as mock_call:
             mock_call.side_effect = ProviderError("Failed to parse response as JSON: ...")
 
             result = await run_vision_alignment(
@@ -254,9 +254,9 @@ class TestOpenRouterProvider:
             author=PRAuthor(login="u"),
         )
 
-        from mcp_ai_auditor.gatekeeper.providers import ProviderError
+        from oss_maintainer_toolkit.gatekeeper.providers import ProviderError
 
-        with patch("mcp_ai_auditor.gatekeeper.vision.call_openai_compatible", new_callable=AsyncMock) as mock_call:
+        with patch("oss_maintainer_toolkit.gatekeeper.vision.call_openai_compatible", new_callable=AsyncMock) as mock_call:
             mock_call.side_effect = ProviderError("Unexpected response structure: 'choices'")
 
             result = await run_vision_alignment(
@@ -286,7 +286,7 @@ class TestClaudeCliProvider:
         )
         mock_process.returncode = 0
 
-        with patch("mcp_ai_auditor.gatekeeper.vision.asyncio.create_subprocess_exec", return_value=mock_process):
+        with patch("oss_maintainer_toolkit.gatekeeper.vision.asyncio.create_subprocess_exec", return_value=mock_process):
             result = await run_vision_alignment(pr, vision, provider="claude_cli")
 
         assert result.outcome == TierOutcome.PASS
@@ -315,7 +315,7 @@ class TestClaudeCliProvider:
         )
         mock_process.returncode = 0
 
-        with patch("mcp_ai_auditor.gatekeeper.vision.asyncio.create_subprocess_exec", return_value=mock_process):
+        with patch("oss_maintainer_toolkit.gatekeeper.vision.asyncio.create_subprocess_exec", return_value=mock_process):
             result = await run_vision_alignment(pr, vision, provider="claude_cli")
 
         assert result.outcome == TierOutcome.GATED
@@ -331,7 +331,7 @@ class TestClaudeCliProvider:
         )
 
         with patch(
-            "mcp_ai_auditor.gatekeeper.vision.asyncio.create_subprocess_exec",
+            "oss_maintainer_toolkit.gatekeeper.vision.asyncio.create_subprocess_exec",
             side_effect=FileNotFoundError("claude not found"),
         ):
             result = await run_vision_alignment(
@@ -352,7 +352,7 @@ class TestClaudeCliProvider:
         mock_process = AsyncMock()
         mock_process.communicate = AsyncMock(side_effect=asyncio.TimeoutError())
 
-        with patch("mcp_ai_auditor.gatekeeper.vision.asyncio.create_subprocess_exec", return_value=mock_process):
+        with patch("oss_maintainer_toolkit.gatekeeper.vision.asyncio.create_subprocess_exec", return_value=mock_process):
             result = await run_vision_alignment(
                 pr, vision, provider="claude_cli", timeout_seconds=1,
             )
@@ -374,7 +374,7 @@ class TestClaudeCliProvider:
         )
         mock_process.returncode = 1
 
-        with patch("mcp_ai_auditor.gatekeeper.vision.asyncio.create_subprocess_exec", return_value=mock_process):
+        with patch("oss_maintainer_toolkit.gatekeeper.vision.asyncio.create_subprocess_exec", return_value=mock_process):
             result = await run_vision_alignment(pr, vision, provider="claude_cli")
 
         assert result.outcome == TierOutcome.ERROR
@@ -393,7 +393,7 @@ class TestClaudeCliProvider:
         )
         mock_process.returncode = 0
 
-        with patch("mcp_ai_auditor.gatekeeper.vision.asyncio.create_subprocess_exec", return_value=mock_process):
+        with patch("oss_maintainer_toolkit.gatekeeper.vision.asyncio.create_subprocess_exec", return_value=mock_process):
             result = await run_vision_alignment(pr, vision, provider="claude_cli")
 
         assert result.outcome == TierOutcome.ERROR
@@ -427,7 +427,7 @@ class TestProviderDispatch:
     @pytest.mark.asyncio
     async def test_default_provider_is_auto(self):
         """Verify the default provider from settings is auto."""
-        from mcp_ai_auditor.gatekeeper.config import GatekeeperSettings
+        from oss_maintainer_toolkit.gatekeeper.config import GatekeeperSettings
         settings = GatekeeperSettings()
         assert settings.llm_provider == "auto"
 
@@ -446,7 +446,7 @@ class TestProviderDispatch:
             "concerns": [],
         }
 
-        with patch("mcp_ai_auditor.gatekeeper.vision.call_anthropic", new_callable=AsyncMock) as mock_call:
+        with patch("oss_maintainer_toolkit.gatekeeper.vision.call_anthropic", new_callable=AsyncMock) as mock_call:
             mock_call.return_value = mock_data
 
             result = await run_vision_alignment(
@@ -476,7 +476,7 @@ class TestProviderDispatch:
             "concerns": ["Minor issue"],
         }
 
-        with patch("mcp_ai_auditor.gatekeeper.vision.call_gemini", new_callable=AsyncMock) as mock_call:
+        with patch("oss_maintainer_toolkit.gatekeeper.vision.call_gemini", new_callable=AsyncMock) as mock_call:
             mock_call.return_value = mock_data
 
             result = await run_vision_alignment(
@@ -502,7 +502,7 @@ class TestProviderDispatch:
             "concerns": [],
         }
 
-        with patch("mcp_ai_auditor.gatekeeper.vision.call_openai_compatible", new_callable=AsyncMock) as mock_call:
+        with patch("oss_maintainer_toolkit.gatekeeper.vision.call_openai_compatible", new_callable=AsyncMock) as mock_call:
             mock_call.return_value = mock_data
 
             result = await run_vision_alignment(
@@ -524,7 +524,7 @@ class TestProviderDispatch:
 
         mock_data = {"alignment_score": 0.8, "violated_principles": [], "strengths": [], "concerns": []}
 
-        with patch("mcp_ai_auditor.gatekeeper.vision.call_anthropic", new_callable=AsyncMock) as mock_call:
+        with patch("oss_maintainer_toolkit.gatekeeper.vision.call_anthropic", new_callable=AsyncMock) as mock_call:
             mock_call.return_value = mock_data
 
             result = await run_vision_alignment(

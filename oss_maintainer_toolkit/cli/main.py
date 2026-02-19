@@ -1,4 +1,4 @@
-"""Typer CLI for mcp-ai-auditor security tools."""
+"""Typer CLI for oss-maintainer-toolkit."""
 
 import asyncio
 
@@ -6,13 +6,13 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from mcp_ai_auditor.scanners.vulnerability_scanner import scan_vulnerabilities
-from mcp_ai_auditor.analysis.data_flow import trace_data_flow
-from mcp_ai_auditor.cve.checker import check_cve
+from oss_maintainer_toolkit.scanners.vulnerability_scanner import scan_vulnerabilities
+from oss_maintainer_toolkit.analysis.data_flow import trace_data_flow
+from oss_maintainer_toolkit.cve.checker import check_cve
 
 app = typer.Typer(
-    name="auditor",
-    help="AI-powered security auditor — scan for vulnerabilities, trace data flows, check CVEs.",
+    name="maintainer",
+    help="OSS Maintainer Toolkit — automated triage for PRs, issues, contributors, and review queues.",
 )
 console = Console()
 
@@ -140,10 +140,10 @@ def assess(
     json_output: bool = typer.Option(False, "--json", help="Output raw JSON scorecard"),
 ):
     """Assess a GitHub PR for contribution risk (three-tier gated pipeline)."""
-    from mcp_ai_auditor.gatekeeper.github_client import GitHubClient
-    from mcp_ai_auditor.gatekeeper.ingest import ingest_pr
-    from mcp_ai_auditor.gatekeeper.pipeline import run_pipeline
-    from mcp_ai_auditor.gatekeeper.scorecard import render_scorecard, scorecard_to_json
+    from oss_maintainer_toolkit.gatekeeper.github_client import GitHubClient
+    from oss_maintainer_toolkit.gatekeeper.ingest import ingest_pr
+    from oss_maintainer_toolkit.gatekeeper.pipeline import run_pipeline
+    from oss_maintainer_toolkit.gatekeeper.scorecard import render_scorecard, scorecard_to_json
 
     async def _run():
         async with GitHubClient() as client:

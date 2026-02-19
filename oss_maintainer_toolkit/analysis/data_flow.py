@@ -3,7 +3,7 @@
 import ast
 from pathlib import Path
 
-from mcp_ai_auditor.models import DataFlowResult, TaintFlow
+from oss_maintainer_toolkit.models import DataFlowResult, TaintFlow
 
 
 # Sources of tainted (user-controlled) data

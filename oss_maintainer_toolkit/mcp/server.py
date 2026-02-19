@@ -1,15 +1,15 @@
-"""FastMCP server exposing security audit tools."""
+"""FastMCP server exposing OSS maintainer toolkit tools."""
 
 import asyncio
 import json
 
 from mcp.server.fastmcp import FastMCP
 
-from mcp_ai_auditor.scanners.vulnerability_scanner import scan_vulnerabilities
-from mcp_ai_auditor.analysis.data_flow import trace_data_flow
-from mcp_ai_auditor.cve.checker import check_cve
+from oss_maintainer_toolkit.scanners.vulnerability_scanner import scan_vulnerabilities
+from oss_maintainer_toolkit.analysis.data_flow import trace_data_flow
+from oss_maintainer_toolkit.cve.checker import check_cve
 
-mcp = FastMCP("mcp-ai-auditor")
+mcp = FastMCP("oss-maintainer-toolkit")
 
 
 @mcp.tool()
@@ -81,9 +81,9 @@ async def assess_contribution_risk_tool(
         vision_document_path: Path to YAML vision document (optional, enables Tier 3).
         enable_tier3: Whether to run Tier 3 vision alignment (default True).
     """
-    from mcp_ai_auditor.gatekeeper.github_client import GitHubClient
-    from mcp_ai_auditor.gatekeeper.ingest import ingest_pr
-    from mcp_ai_auditor.gatekeeper.pipeline import run_pipeline
+    from oss_maintainer_toolkit.gatekeeper.github_client import GitHubClient
+    from oss_maintainer_toolkit.gatekeeper.ingest import ingest_pr
+    from oss_maintainer_toolkit.gatekeeper.pipeline import run_pipeline
 
     async with GitHubClient() as client:
         pr = await ingest_pr(owner, repo, pr_number, client)

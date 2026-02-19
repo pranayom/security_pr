@@ -6,10 +6,10 @@ import httpx
 import pytest
 import respx
 
-from mcp_ai_auditor.config import settings
-from mcp_ai_auditor.cve.parsers import parse_requirements_txt, parse_package_json, find_and_parse_dependencies
-from mcp_ai_auditor.cve.checker import check_cve, query_osv_batch
-from mcp_ai_auditor.models import Dependency
+from oss_maintainer_toolkit.config import settings
+from oss_maintainer_toolkit.cve.parsers import parse_requirements_txt, parse_package_json, find_and_parse_dependencies
+from oss_maintainer_toolkit.cve.checker import check_cve, query_osv_batch
+from oss_maintainer_toolkit.models import Dependency
 
 
 FIXTURES = Path(__file__).parent / "fixtures"

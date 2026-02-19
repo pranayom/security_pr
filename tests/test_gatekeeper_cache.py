@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from mcp_ai_auditor.gatekeeper.cache import PRCache
+from oss_maintainer_toolkit.gatekeeper.cache import PRCache
 
 
 class TestPRCache:

@@ -1,6 +1,6 @@
-name: "PR Triage — Gatekeeper"
-description: "Three-tier PR risk assessment: embedding dedup, suspicion heuristics, and LLM vision alignment."
-author: "mcp-ai-auditor"
+name: "OSS Maintainer Toolkit"
+description: "Automated PR triage: embedding dedup, heuristic scoring, and LLM vision alignment."
+author: "oss-maintainer-toolkit"
 
 branding:
   icon: "shield"
@@ -69,7 +69,7 @@ runs:
         cd ${{ github.action_path }}
         pip install ".[gatekeeper]"
 
-    - name: Run Gatekeeper triage
+    - name: Run triage
       id: triage
       shell: bash
       env:

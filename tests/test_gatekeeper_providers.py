@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
-from mcp_ai_auditor.gatekeeper.providers import (
+from oss_maintainer_toolkit.gatekeeper.providers import (
     ProviderError,
     call_anthropic,
     call_gemini,
@@ -147,7 +147,7 @@ class TestCallOpenaiCompatible:
         }
         mock_response = httpx.Response(200, json=response_body)
 
-        with patch("mcp_ai_auditor.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
+        with patch("oss_maintainer_toolkit.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -184,7 +184,7 @@ class TestCallOpenaiCompatible:
     async def test_http_error_raises(self):
         mock_response = httpx.Response(429, text="Rate limited")
 
-        with patch("mcp_ai_auditor.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
+        with patch("oss_maintainer_toolkit.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -199,7 +199,7 @@ class TestCallOpenaiCompatible:
 
     @pytest.mark.asyncio
     async def test_timeout_raises(self):
-        with patch("mcp_ai_auditor.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
+        with patch("oss_maintainer_toolkit.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(side_effect=httpx.ReadTimeout("timeout"))
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -219,7 +219,7 @@ class TestCallOpenaiCompatible:
         }
         mock_response = httpx.Response(200, json=response_body)
 
-        with patch("mcp_ai_auditor.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
+        with patch("oss_maintainer_toolkit.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -239,7 +239,7 @@ class TestCallOpenaiCompatible:
         }
         mock_response = httpx.Response(200, json=response_body)
 
-        with patch("mcp_ai_auditor.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
+        with patch("oss_maintainer_toolkit.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -265,7 +265,7 @@ class TestCallAnthropic:
         }
         mock_response = httpx.Response(200, json=response_body)
 
-        with patch("mcp_ai_auditor.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
+        with patch("oss_maintainer_toolkit.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -284,7 +284,7 @@ class TestCallAnthropic:
         response_body = {"content": [{"text": json.dumps({"ok": True})}]}
         mock_response = httpx.Response(200, json=response_body)
 
-        with patch("mcp_ai_auditor.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
+        with patch("oss_maintainer_toolkit.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -305,7 +305,7 @@ class TestCallAnthropic:
         response_body = {"content": [{"text": json.dumps({"ok": True})}]}
         mock_response = httpx.Response(200, json=response_body)
 
-        with patch("mcp_ai_auditor.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
+        with patch("oss_maintainer_toolkit.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -332,7 +332,7 @@ class TestCallAnthropic:
     async def test_http_error_raises(self):
         mock_response = httpx.Response(401, text="Unauthorized")
 
-        with patch("mcp_ai_auditor.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
+        with patch("oss_maintainer_toolkit.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -356,7 +356,7 @@ class TestCallGemini:
         }
         mock_response = httpx.Response(200, json=response_body)
 
-        with patch("mcp_ai_auditor.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
+        with patch("oss_maintainer_toolkit.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -377,7 +377,7 @@ class TestCallGemini:
         }
         mock_response = httpx.Response(200, json=response_body)
 
-        with patch("mcp_ai_auditor.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
+        with patch("oss_maintainer_toolkit.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -400,7 +400,7 @@ class TestCallGemini:
         }
         mock_response = httpx.Response(200, json=response_body)
 
-        with patch("mcp_ai_auditor.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
+        with patch("oss_maintainer_toolkit.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -424,7 +424,7 @@ class TestCallGemini:
     async def test_http_error_raises(self):
         mock_response = httpx.Response(403, text="Forbidden")
 
-        with patch("mcp_ai_auditor.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
+        with patch("oss_maintainer_toolkit.gatekeeper.providers.httpx.AsyncClient") as mock_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)

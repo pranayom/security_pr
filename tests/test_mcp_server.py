@@ -7,8 +7,8 @@ import httpx
 import pytest
 import respx
 
-from mcp_ai_auditor.config import settings
-from mcp_ai_auditor.mcp.server import scan_vulnerabilities_tool, trace_data_flow_tool, check_cve_tool
+from oss_maintainer_toolkit.config import settings
+from oss_maintainer_toolkit.mcp.server import scan_vulnerabilities_tool, trace_data_flow_tool, check_cve_tool
 
 
 FIXTURES = Path(__file__).parent / "fixtures"

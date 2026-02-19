@@ -6,7 +6,7 @@ import os
 import pytest
 from rich.console import Console
 
-from mcp_ai_auditor.gatekeeper.models import (
+from oss_maintainer_toolkit.gatekeeper.models import (
     AssessmentScorecard,
     DedupResult,
     DimensionScore,
@@ -16,7 +16,7 @@ from mcp_ai_auditor.gatekeeper.models import (
     TierOutcome,
     Verdict,
 )
-from mcp_ai_auditor.gatekeeper.scorecard import render_scorecard, scorecard_to_json
+from oss_maintainer_toolkit.gatekeeper.scorecard import render_scorecard, scorecard_to_json
 
 
 def _make_scorecard(verdict: Verdict = Verdict.FAST_TRACK, **kwargs) -> AssessmentScorecard:
