@@ -1,4 +1,4 @@
-"""Pydantic models for the Gatekeeper PR risk assessment pipeline."""
+"""Pydantic models for the Gatekeeper PR and issue triage pipeline."""
 
 from __future__ import annotations
 
@@ -62,6 +62,32 @@ class PRMetadata(BaseModel):
     total_deletions: int = 0
 
 
+# --- GitHub Issue Models ---
+
+class IssueAuthor(BaseModel):
+    login: str
+    account_created_at: datetime | None = None
+    contributions_to_repo: int = 0
+
+
+class IssueMetadata(BaseModel):
+    owner: str
+    repo: str
+    number: int
+    title: str
+    body: str = ""
+    author: IssueAuthor
+    state: str = "open"
+    labels: list[str] = []
+    assignees: list[str] = []
+    milestone: str = ""
+    reactions: dict[str, int] = {}
+    comment_count: int = 0
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    closed_at: datetime | None = None
+
+
 # --- Tier 1: Dedup ---
 
 class DedupResult(BaseModel):
@@ -122,6 +148,20 @@ class AssessmentScorecard(BaseModel):
     owner: str
     repo: str
     pr_number: int
+    verdict: Verdict
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    dimensions: list[DimensionScore] = []
+    dedup_result: DedupResult | None = None
+    heuristics_result: HeuristicsResult | None = None
+    vision_result: VisionAlignmentResult | None = None
+    flags: list[SuspicionFlag] = []
+    summary: str = ""
+
+
+class IssueScorecard(BaseModel):
+    owner: str
+    repo: str
+    issue_number: int
     verdict: Verdict
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     dimensions: list[DimensionScore] = []

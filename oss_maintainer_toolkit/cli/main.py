@@ -166,5 +166,43 @@ def assess(
         render_scorecard(scorecard, console)
 
 
+@app.command(name="triage-issue")
+def triage_issue(
+    owner: str = typer.Argument(help="GitHub repo owner"),
+    repo: str = typer.Argument(help="GitHub repo name"),
+    issue_number: int = typer.Argument(help="Issue number"),
+    vision: str = typer.Option("", "--vision", help="Path to YAML vision document"),
+    no_tier3: bool = typer.Option(False, "--no-tier3", help="Skip Tier 3 vision alignment"),
+    provider: str = typer.Option("", "--provider", help="LLM provider: auto, openrouter, openai, anthropic, gemini, generic, claude_cli"),
+    api_key: str = typer.Option("", "--api-key", help="Unified API key (auto-detects provider from prefix)"),
+    json_output: bool = typer.Option(False, "--json", help="Output raw JSON scorecard"),
+):
+    """Triage a GitHub issue (three-tier gated pipeline)."""
+    from oss_maintainer_toolkit.gatekeeper.github_client import GitHubClient
+    from oss_maintainer_toolkit.gatekeeper.issue_ingest import ingest_issue
+    from oss_maintainer_toolkit.gatekeeper.issue_pipeline import run_issue_pipeline
+    from oss_maintainer_toolkit.gatekeeper.issue_scorecard import issue_scorecard_to_json, render_issue_scorecard
+
+    async def _run():
+        async with GitHubClient() as client:
+            issue = await ingest_issue(owner, repo, issue_number, client)
+
+        scorecard = await run_issue_pipeline(
+            issue,
+            vision_document_path=vision,
+            enable_tier3=not no_tier3,
+            llm_provider=provider,
+            llm_api_key=api_key,
+        )
+        return scorecard
+
+    scorecard = asyncio.run(_run())
+
+    if json_output:
+        console.print(issue_scorecard_to_json(scorecard))
+    else:
+        render_issue_scorecard(scorecard, console)
+
+
 if __name__ == "__main__":
     app()

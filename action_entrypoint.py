@@ -1,4 +1,4 @@
-"""GitHub Action entrypoint for the Gatekeeper PR triage pipeline."""
+"""GitHub Action entrypoint for the Gatekeeper PR and issue triage pipeline."""
 
 import argparse
 import asyncio
@@ -7,7 +7,9 @@ import sys
 
 from oss_maintainer_toolkit.gatekeeper.github_client import GitHubClient
 from oss_maintainer_toolkit.gatekeeper.ingest import ingest_pr
+from oss_maintainer_toolkit.gatekeeper.issue_ingest import ingest_issue
 from oss_maintainer_toolkit.gatekeeper.pipeline import run_pipeline
+from oss_maintainer_toolkit.gatekeeper.issue_pipeline import run_issue_pipeline
 from oss_maintainer_toolkit.gatekeeper.models import Verdict
 
 
@@ -170,11 +172,150 @@ async def main(owner: str, repo: str, pr_number: int) -> None:
         print(f"::warning::PR #{pr_number} is likely a duplicate — recommend closing")
 
 
+async def main_issue(owner: str, repo: str, issue_number: int) -> None:
+    """Run issue triage pipeline (called for issues.opened events)."""
+    vision_path = os.environ.get("INPUT_VISION_DOCUMENT", "")
+    post_comment = os.environ.get("INPUT_POST_COMMENT", "true").lower() == "true"
+
+    if vision_path and not os.path.isabs(vision_path):
+        workspace = os.environ.get("GITHUB_WORKSPACE", "")
+        if workspace:
+            vision_path = os.path.join(workspace, vision_path)
+
+    enforce_vision = os.environ.get("INPUT_ENFORCE_VISION", "false").lower() == "true"
+    has_llm_key = any(
+        bool(os.environ.get(k, ""))
+        for k in [
+            "AUDITOR_GK_LLM_API_KEY",
+            "AUDITOR_GK_OPENROUTER_API_KEY",
+            "AUDITOR_GK_OPENAI_API_KEY",
+            "AUDITOR_GK_ANTHROPIC_API_KEY",
+            "AUDITOR_GK_GEMINI_API_KEY",
+        ]
+    )
+    enable_tier3 = enforce_vision and has_llm_key and bool(vision_path)
+
+    if not enforce_vision:
+        print("Vision enforcement disabled (enforce_vision=false) — Tier 3 skipped")
+    elif not has_llm_key:
+        print("No LLM API key found — running Tiers 1+2 only")
+    elif not vision_path:
+        print("No vision document — Tier 3 skipped")
+
+    print(f"Triaging Issue #{issue_number} on {owner}/{repo}...")
+    try:
+        async with GitHubClient() as client:
+            issue = await ingest_issue(owner, repo, issue_number, client)
+    except Exception as exc:
+        print(f"::error::Failed to ingest Issue #{issue_number}: {exc}")
+        sys.exit(1)
+
+    print(f"Issue: #{issue.number} - {issue.title}")
+
+    try:
+        scorecard = await run_issue_pipeline(
+            issue,
+            vision_document_path=vision_path,
+            enable_tier3=enable_tier3,
+        )
+    except Exception as exc:
+        print(f"::error::Pipeline failed for Issue #{issue_number}: {exc}")
+        sys.exit(1)
+
+    verdict = scorecard.verdict.value.upper().replace("_", " ")
+    print(f"Verdict: {verdict}")
+    print(f"Summary: {scorecard.summary}")
+
+    github_output = os.environ.get("GITHUB_OUTPUT", "")
+    if github_output:
+        with open(github_output, "a") as f:
+            f.write(f"verdict={scorecard.verdict.value}\n")
+            scorecard_json = scorecard.model_dump_json()
+            f.write(f"scorecard_json<<EOF\n{scorecard_json}\nEOF\n")
+
+    if post_comment:
+        comment = _format_issue_comment(scorecard)
+        await _post_comment(owner, repo, issue_number, comment)
+
+    if scorecard.verdict == Verdict.RECOMMEND_CLOSE:
+        print(f"::warning::Issue #{issue_number} is likely a duplicate — recommend closing")
+
+
+def _format_issue_comment(scorecard) -> str:
+    """Format issue scorecard as a GitHub comment in markdown."""
+    verdict = scorecard.verdict.value.upper().replace("_", " ")
+    emoji = {
+        Verdict.FAST_TRACK: "&#x2705;",
+        Verdict.REVIEW_REQUIRED: "&#x26A0;",
+        Verdict.RECOMMEND_CLOSE: "&#x274C;",
+    }.get(scorecard.verdict, "")
+
+    lines = [
+        f"## {emoji} Issue Triage: **{verdict}**",
+        "",
+        f"> {scorecard.summary}",
+        "",
+    ]
+
+    if scorecard.dimensions:
+        lines.append("| Dimension | Score | Summary |")
+        lines.append("|---|---|---|")
+        for d in scorecard.dimensions:
+            score_bar = "+" * int(d.score * 10) + "-" * (10 - int(d.score * 10))
+            lines.append(f"| {d.dimension} | `{score_bar}` {d.score:.2f} | {d.summary} |")
+        lines.append("")
+
+    if scorecard.flags:
+        lines.append("### Flags")
+        lines.append("")
+        for f in scorecard.flags:
+            severity_badge = {
+                "high": "**HIGH**",
+                "medium": "MEDIUM",
+                "low": "low",
+            }.get(f.severity.value, f.severity.value)
+            lines.append(f"- [{severity_badge}] **{f.title}**: {f.explanation}")
+        lines.append("")
+
+    if scorecard.vision_result and scorecard.vision_result.alignment_score > 0:
+        vr = scorecard.vision_result
+        lines.append(f"### Vision Alignment: {vr.alignment_score:.2f}")
+        if vr.violated_principles:
+            lines.append(f"**Violated:** {', '.join(vr.violated_principles)}")
+        if vr.strengths:
+            for s in vr.strengths:
+                lines.append(f"- :heavy_plus_sign: {s}")
+        if vr.concerns:
+            for c in vr.concerns:
+                lines.append(f"- :heavy_minus_sign: {c}")
+        lines.append("")
+
+    lines.append("---")
+    lines.append("*Generated by [OSS Maintainer Toolkit](https://github.com/pranayom/oss-maintainer-toolkit)*")
+
+    return "\n".join(lines)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--owner", required=True)
     parser.add_argument("--repo", required=True)
-    parser.add_argument("--pr-number", type=int, required=True)
+    parser.add_argument("--pr-number", type=int, default=0)
+    parser.add_argument("--issue-number", type=int, default=0)
     args = parser.parse_args()
 
-    asyncio.run(main(args.owner, args.repo, args.pr_number))
+    # Dispatch based on which number was provided
+    if args.issue_number:
+        asyncio.run(main_issue(args.owner, args.repo, args.issue_number))
+    elif args.pr_number:
+        asyncio.run(main(args.owner, args.repo, args.pr_number))
+    else:
+        # Auto-detect from GITHUB_EVENT_NAME
+        event = os.environ.get("GITHUB_EVENT_NAME", "")
+        if event == "issues":
+            # For issues events, the issue number comes from the event payload
+            print("::error::Issue events require --issue-number argument")
+            sys.exit(1)
+        else:
+            print("::error::Either --pr-number or --issue-number is required")
+            sys.exit(1)

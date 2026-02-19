@@ -1,0 +1,36 @@
+{
+  "number": 101,
+  "title": "Login page crashes on empty password",
+  "body": "When I enter an empty password on the login page, the app crashes with a traceback.\n\n## Steps to reproduce\n1. Go to /login\n2. Enter a username\n3. Leave password blank\n4. Click submit\n\n## Expected\nValidation error message\n\n## Actual\nServer 500 error with traceback",
+  "state": "open",
+  "created_at": "2025-12-01T10:00:00Z",
+  "updated_at": "2025-12-02T14:30:00Z",
+  "closed_at": null,
+  "comments": 3,
+  "user": {
+    "login": "contributor123",
+    "id": 12345,
+    "type": "User"
+  },
+  "labels": [
+    {"name": "bug"},
+    {"name": "login"}
+  ],
+  "assignees": [
+    {"login": "maintainer1"}
+  ],
+  "milestone": {
+    "title": "v2.0"
+  },
+  "reactions": {
+    "+1": 5,
+    "-1": 0,
+    "laugh": 0,
+    "hooray": 0,
+    "confused": 2,
+    "heart": 0,
+    "rocket": 0,
+    "eyes": 1
+  },
+  "repository_url": "https://api.github.com/repos/nicoseng/OpenClaw"
+}

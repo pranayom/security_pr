@@ -13,6 +13,7 @@ import yaml
 
 from oss_maintainer_toolkit.gatekeeper.config import gatekeeper_settings
 from oss_maintainer_toolkit.gatekeeper.models import (
+    IssueMetadata,
     PRMetadata,
     TierOutcome,
     VisionAlignmentResult,
@@ -223,53 +224,55 @@ def _get_provider_config(provider: str, api_key: str, settings=None):
     return configs.get(provider, ("", "", s.llm_timeout_seconds))
 
 
-# --- Unified entry point ---
+# --- Shared provider dispatch ---
 
-async def run_vision_alignment(
-    pr: PRMetadata,
-    vision: VisionDocument,
+def _resolve_effective_provider(
     provider: str = "",
     api_key: str = "",
-    # OpenRouter overrides (backward compat)
     openrouter_api_key: str = "",
-    openrouter_model: str = "",
-    # Claude CLI overrides
-    claude_command: str = "",
-    timeout_seconds: int = 0,
-) -> VisionAlignmentResult:
-    """Run vision alignment assessment using the configured LLM provider.
+) -> tuple[str, str]:
+    """Resolve effective provider and key from explicit params + config.
 
-    Provider selection (in order):
-    1. Explicit `provider` param
-    2. Auto-detect from `api_key` prefix
-    3. Config-level auto-detection via AUDITOR_GK_LLM_PROVIDER / keys
-
-    Supported providers: auto, openrouter, openai, anthropic, gemini, generic, claude_cli.
+    Returns (effective_provider, effective_key).
     """
-    prompt = _build_prompt(pr, vision)
-
-    # Resolve provider and key
     if provider and provider != "auto":
         effective_provider = provider
-        effective_key = api_key or openrouter_api_key  # backward compat for openrouter
+        effective_key = api_key or openrouter_api_key
     elif api_key:
         from oss_maintainer_toolkit.gatekeeper.providers import detect_provider_from_key
         detected = detect_provider_from_key(api_key)
         effective_provider = detected or (provider if provider else gatekeeper_settings.llm_provider)
         effective_key = api_key
-        # If still "auto" after detection failed, fall through to resolve
         if effective_provider == "auto":
             effective_provider, effective_key = resolve_provider_and_key(gatekeeper_settings)
     else:
-        # Use config-level resolution
         resolved_provider, resolved_key = resolve_provider_and_key(gatekeeper_settings)
         effective_provider = provider if (provider and provider != "auto") else resolved_provider
         effective_key = resolved_key
-        # Backward compat: explicit openrouter_api_key param overrides
         if effective_provider == "openrouter" and openrouter_api_key:
             effective_key = openrouter_api_key
 
-    # Dispatch to provider
+    return effective_provider, effective_key
+
+
+async def _dispatch_to_provider(
+    prompt: str,
+    system_prompt: str,
+    provider: str = "",
+    api_key: str = "",
+    openrouter_api_key: str = "",
+    openrouter_model: str = "",
+    claude_command: str = "",
+    timeout_seconds: int = 0,
+) -> VisionAlignmentResult:
+    """Dispatch a prompt to the resolved LLM provider and return a VisionAlignmentResult.
+
+    This is the shared provider dispatch used by both PR and issue vision alignment.
+    """
+    effective_provider, effective_key = _resolve_effective_provider(
+        provider, api_key, openrouter_api_key,
+    )
+
     if effective_provider == "claude_cli":
         return await _run_claude_cli(
             prompt,
@@ -287,7 +290,7 @@ async def run_vision_alignment(
         try:
             data = await call_openai_compatible(
                 prompt=prompt,
-                system_prompt=SYSTEM_PROMPT,
+                system_prompt=system_prompt,
                 json_schema=SCORECARD_SCHEMA,
                 api_key=effective_key,
                 model=openrouter_model or model,
@@ -312,7 +315,7 @@ async def run_vision_alignment(
         try:
             data = await call_anthropic(
                 prompt=prompt_with_schema,
-                system_prompt=SYSTEM_PROMPT,
+                system_prompt=system_prompt,
                 api_key=effective_key,
                 model=model,
                 base_url=base_url,
@@ -336,7 +339,7 @@ async def run_vision_alignment(
         try:
             data = await call_gemini(
                 prompt=prompt_with_schema,
-                system_prompt=SYSTEM_PROMPT,
+                system_prompt=system_prompt,
                 api_key=effective_key,
                 model=model,
                 base_url=base_url,
@@ -352,4 +355,106 @@ async def run_vision_alignment(
     return VisionAlignmentResult(
         outcome=TierOutcome.ERROR,
         concerns=[f"Unknown LLM provider '{effective_provider}'. Use 'auto', 'openrouter', 'openai', 'anthropic', 'gemini', 'generic', or 'claude_cli'."],
+    )
+
+
+# --- PR vision alignment (unified entry point) ---
+
+async def run_vision_alignment(
+    pr: PRMetadata,
+    vision: VisionDocument,
+    provider: str = "",
+    api_key: str = "",
+    # OpenRouter overrides (backward compat)
+    openrouter_api_key: str = "",
+    openrouter_model: str = "",
+    # Claude CLI overrides
+    claude_command: str = "",
+    timeout_seconds: int = 0,
+) -> VisionAlignmentResult:
+    """Run vision alignment assessment for a PR using the configured LLM provider.
+
+    Provider selection (in order):
+    1. Explicit `provider` param
+    2. Auto-detect from `api_key` prefix
+    3. Config-level auto-detection via AUDITOR_GK_LLM_PROVIDER / keys
+
+    Supported providers: auto, openrouter, openai, anthropic, gemini, generic, claude_cli.
+    """
+    prompt = _build_prompt(pr, vision)
+    return await _dispatch_to_provider(
+        prompt=prompt,
+        system_prompt=SYSTEM_PROMPT,
+        provider=provider,
+        api_key=api_key,
+        openrouter_api_key=openrouter_api_key,
+        openrouter_model=openrouter_model,
+        claude_command=claude_command,
+        timeout_seconds=timeout_seconds,
+    )
+
+
+# --- Issue vision alignment ---
+
+ISSUE_SYSTEM_PROMPT = (
+    "You are a project maintainer triaging GitHub issues against a project's vision document. "
+    "Return ONLY valid JSON matching the provided schema. No markdown, no extra keys, no extra text."
+)
+
+
+def _build_issue_prompt(issue: IssueMetadata, vision: VisionDocument) -> str:
+    """Build the user prompt for issue vision alignment assessment."""
+    principles_text = "\n".join(
+        f"- {p.name}: {p.description}" for p in vision.principles
+    )
+    anti_patterns_text = "\n".join(f"- {ap}" for ap in vision.anti_patterns)
+    focus_areas_text = "\n".join(f"- {fa}" for fa in vision.focus_areas)
+
+    labels_text = ", ".join(issue.labels) if issue.labels else "(none)"
+
+    return f"""Assess this GitHub issue for alignment with the project's vision document.
+
+## Project: {vision.project}
+
+### Vision Principles
+{principles_text}
+
+### Anti-Patterns to Watch For
+{anti_patterns_text}
+
+### Focus Areas
+{focus_areas_text}
+
+## Issue #{issue.number}: {issue.title}
+
+**Author:** {issue.author.login}
+**State:** {issue.state}
+**Labels:** {labels_text}
+**Comments:** {issue.comment_count}
+**Description:** {issue.body[:2000] if issue.body else '(no description)'}
+
+Evaluate alignment_score from 0.0 (off-topic / violates vision) to 1.0 (perfect fit). List any violated principle names exactly as shown above."""
+
+
+async def run_issue_vision_alignment(
+    issue: IssueMetadata,
+    vision: VisionDocument,
+    provider: str = "",
+    api_key: str = "",
+    openrouter_api_key: str = "",
+    openrouter_model: str = "",
+    claude_command: str = "",
+    timeout_seconds: int = 0,
+) -> VisionAlignmentResult:
+    """Run vision alignment assessment for an issue using the configured LLM provider."""
+    prompt = _build_issue_prompt(issue, vision)
+    return await _dispatch_to_provider(
+        prompt=prompt,
+        system_prompt=ISSUE_SYSTEM_PROMPT,
+        provider=provider,
+        api_key=api_key,
+        openrouter_api_key=openrouter_api_key,
+        openrouter_model=openrouter_model,
+        claude_command=claude_command,
+        timeout_seconds=timeout_seconds,
     )

@@ -148,3 +148,62 @@ class TestGitHubClient:
         async with GitHubClient(api_url=BASE_URL) as client:
             with pytest.raises(httpx.HTTPStatusError):
                 await client.get_pr("owner", "repo", 999)
+
+    # --- Issue endpoint tests ---
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_get_issue(self):
+        respx.get(f"{BASE_URL}/repos/owner/repo/issues/101").mock(
+            return_value=httpx.Response(200, json={"number": 101, "title": "Test Issue"})
+        )
+
+        async with GitHubClient(api_url=BASE_URL) as client:
+            issue = await client.get_issue("owner", "repo", 101)
+
+        assert issue["number"] == 101
+        assert issue["title"] == "Test Issue"
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_list_open_issues_excludes_prs(self):
+        """list_open_issues should filter out items with pull_request key."""
+        respx.get(f"{BASE_URL}/repos/owner/repo/issues").mock(
+            return_value=httpx.Response(200, json=[
+                {"number": 1, "title": "Real Issue"},
+                {"number": 2, "title": "Actually a PR", "pull_request": {"url": "..."}},
+                {"number": 3, "title": "Another Issue"},
+            ])
+        )
+
+        async with GitHubClient(api_url=BASE_URL) as client:
+            issues = await client.list_open_issues("owner", "repo")
+
+        assert len(issues) == 2
+        assert issues[0]["number"] == 1
+        assert issues[1]["number"] == 3
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_count_user_issues(self):
+        respx.get(url__startswith=f"{BASE_URL}/search/issues").mock(
+            return_value=httpx.Response(200, json={"total_count": 7})
+        )
+
+        async with GitHubClient(api_url=BASE_URL) as client:
+            count = await client.count_user_issues("owner", "repo", "testuser")
+
+        assert count == 7
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_count_user_issues_rate_limit_fallback(self):
+        """Returns 0 on rate limit errors."""
+        respx.get(url__startswith=f"{BASE_URL}/search/issues").mock(
+            return_value=httpx.Response(429, json={"message": "rate limited"})
+        )
+
+        async with GitHubClient(api_url=BASE_URL) as client:
+            count = await client.count_user_issues("owner", "repo", "testuser")
+
+        assert count == 0

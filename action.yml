@@ -1,5 +1,5 @@
 name: "OSS Maintainer Toolkit"
-description: "Automated PR triage: embedding dedup, heuristic scoring, and LLM vision alignment."
+description: "Automated PR and issue triage: embedding dedup, heuristic scoring, and LLM vision alignment."
 author: "oss-maintainer-toolkit"
 
 branding:
@@ -86,7 +86,14 @@ runs:
         INPUT_POST_COMMENT: ${{ inputs.post_comment }}
       run: |
         cd ${{ github.action_path }}
-        python action_entrypoint.py \
-          --owner "${{ github.repository_owner }}" \
-          --repo "${{ github.event.repository.name }}" \
-          --pr-number "${{ github.event.pull_request.number }}"
+        if [ "${{ github.event_name }}" = "issues" ]; then
+          python action_entrypoint.py \
+            --owner "${{ github.repository_owner }}" \
+            --repo "${{ github.event.repository.name }}" \
+            --issue-number "${{ github.event.issue.number }}"
+        else
+          python action_entrypoint.py \
+            --owner "${{ github.repository_owner }}" \
+            --repo "${{ github.event.repository.name }}" \
+            --pr-number "${{ github.event.pull_request.number }}"
+        fi

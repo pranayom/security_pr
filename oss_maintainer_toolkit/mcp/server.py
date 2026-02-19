@@ -97,5 +97,45 @@ async def assess_contribution_risk_tool(
     return scorecard.model_dump_json(indent=2)
 
 
+@mcp.tool()
+async def triage_issue_tool(
+    owner: str,
+    repo: str,
+    issue_number: int,
+    vision_document_path: str = "",
+    enable_tier3: bool = True,
+) -> str:
+    """Triage a GitHub issue using the three-tier gated pipeline.
+
+    Tier 1: Embedding-based dedup (flags duplicate issues).
+    Tier 2: Heuristic quality scoring (vague descriptions, new accounts, missing repro, etc.).
+    Tier 3: LLM vision alignment via OpenRouter free models or claude --print (optional).
+
+    Returns a JSON scorecard with verdict (FAST_TRACK / REVIEW_REQUIRED / RECOMMEND_CLOSE),
+    per-dimension scores, and specific flags with explanations.
+
+    Args:
+        owner: GitHub repo owner (e.g. "nicoseng").
+        repo: GitHub repo name (e.g. "OpenClaw").
+        issue_number: Issue number.
+        vision_document_path: Path to YAML vision document (optional, enables Tier 3).
+        enable_tier3: Whether to run Tier 3 vision alignment (default True).
+    """
+    from oss_maintainer_toolkit.gatekeeper.github_client import GitHubClient
+    from oss_maintainer_toolkit.gatekeeper.issue_ingest import ingest_issue
+    from oss_maintainer_toolkit.gatekeeper.issue_pipeline import run_issue_pipeline
+
+    async with GitHubClient() as client:
+        issue = await ingest_issue(owner, repo, issue_number, client)
+
+    scorecard = await run_issue_pipeline(
+        issue,
+        vision_document_path=vision_document_path,
+        enable_tier3=enable_tier3,
+        llm_provider="",
+    )
+    return scorecard.model_dump_json(indent=2)
+
+
 if __name__ == "__main__":
     mcp.run()

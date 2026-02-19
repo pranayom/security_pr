@@ -149,3 +149,39 @@ class GitHubClient:
             return resp.json().get("total_count", 0)
         except (httpx.HTTPStatusError, httpx.TimeoutException):
             return 0
+
+    # --- Issue endpoints ---
+
+    async def get_issue(self, owner: str, repo: str, number: int) -> dict:
+        """Fetch a single issue."""
+        resp = await self.client.get(f"/repos/{owner}/{repo}/issues/{number}")
+        resp.raise_for_status()
+        await self._check_remaining(resp)
+        return resp.json()
+
+    async def list_open_issues(self, owner: str, repo: str) -> list[dict]:
+        """List open issues (paginated), excluding pull requests."""
+        items = await self._paginate(
+            f"/repos/{owner}/{repo}/issues",
+            params={"state": "open", "per_page": "100"},
+        )
+        # GitHub's issues endpoint returns PRs too — filter them out
+        return [item for item in items if "pull_request" not in item]
+
+    async def count_user_issues(self, owner: str, repo: str, username: str) -> int:
+        """Count issues authored by a user in a repo via Search API.
+
+        Returns 0 on rate limit or other errors to avoid blocking ingestion.
+        """
+        query = f"repo:{owner}/{repo} author:{username} type:issue"
+        try:
+            resp = await self.client.get(
+                "/search/issues",
+                params={"q": query, "per_page": "1"},
+            )
+            if resp.status_code in (403, 422, 429):
+                return 0
+            resp.raise_for_status()
+            return resp.json().get("total_count", 0)
+        except (httpx.HTTPStatusError, httpx.TimeoutException):
+            return 0

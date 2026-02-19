@@ -31,6 +31,11 @@ class GatekeeperSettings(BaseSettings):
     ]
     min_test_ratio: float = 0.1
 
+    # Issue triage
+    issue_duplicate_threshold: float = 0.85
+    issue_suspicion_threshold: float = 0.6
+    issue_min_body_length: int = 30
+
     # Tier 3: Vision — LLM provider
     llm_provider: str = "auto"  # auto, openrouter, openai, anthropic, gemini, generic, claude_cli
     llm_api_key: str = ""  # unified key (auto-detects provider from prefix)
