@@ -188,5 +188,64 @@ async def link_issues_to_prs_tool(
     return report.model_dump_json(indent=2)
 
 
+@mcp.tool()
+async def detect_stale_items_tool(
+    owner: str,
+    repo: str,
+    threshold: float = 0.0,
+    inactive_days: int = 0,
+    since_days: int = 90,
+) -> str:
+    """Detect semantically stale PRs and issues using embedding similarity + metadata.
+
+    Four detection signals (Tier 1 + Tier 2 only, no LLM, $0 cost):
+    - Superseded PRs: open PR similar to a recently merged PR.
+    - Already-addressed issues: open issue similar to a merged PR.
+    - Blocked PRs: open PR references still-open issues.
+    - Inactive items: open PRs/issues with no activity beyond threshold.
+
+    Returns a JSON report with all detected stale items grouped by signal.
+
+    Args:
+        owner: GitHub repo owner.
+        repo: GitHub repo name.
+        threshold: Similarity threshold (0 = config default 0.75).
+        inactive_days: Inactivity threshold in days (0 = config default 90).
+        since_days: How far back to look for merged PRs (default 90 days).
+    """
+    from oss_maintainer_toolkit.gatekeeper.dedup import compute_embedding
+    from oss_maintainer_toolkit.gatekeeper.github_client import GitHubClient
+    from oss_maintainer_toolkit.gatekeeper.ingest import ingest_batch
+    from oss_maintainer_toolkit.gatekeeper.issue_dedup import compute_issue_embedding
+    from oss_maintainer_toolkit.gatekeeper.issue_ingest import ingest_issue_batch
+    from oss_maintainer_toolkit.gatekeeper.staleness import detect_stale_items
+
+    async with GitHubClient() as client:
+        raw_open_prs = await client.list_open_prs(owner, repo)
+        raw_issues = await client.list_open_issues(owner, repo)
+        raw_merged_prs = await client.list_recently_merged_prs(owner, repo, since_days)
+
+        open_pr_numbers = [p["number"] for p in raw_open_prs]
+        issue_numbers = [i["number"] for i in raw_issues]
+        merged_pr_numbers = [p["number"] for p in raw_merged_prs]
+
+        open_prs = list(await ingest_batch(owner, repo, open_pr_numbers, client))
+        open_issues = list(await ingest_issue_batch(owner, repo, issue_numbers, client))
+        merged_prs = list(await ingest_batch(owner, repo, merged_pr_numbers, client))
+
+    open_pr_embeddings = [compute_embedding(pr) for pr in open_prs]
+    open_issue_embeddings = [compute_issue_embedding(issue) for issue in open_issues]
+    merged_pr_embeddings = [compute_embedding(pr) for pr in merged_prs]
+
+    report = detect_stale_items(
+        open_prs, open_pr_embeddings,
+        open_issues, open_issue_embeddings,
+        merged_prs, merged_pr_embeddings,
+        threshold=threshold,
+        inactive_days=inactive_days,
+    )
+    return report.model_dump_json(indent=2)
+
+
 if __name__ == "__main__":
     mcp.run()

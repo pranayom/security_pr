@@ -168,6 +168,37 @@ class GitHubClient:
         # GitHub's issues endpoint returns PRs too — filter them out
         return [item for item in items if "pull_request" not in item]
 
+    async def list_recently_merged_prs(
+        self, owner: str, repo: str, since_days: int = 90,
+    ) -> list[dict]:
+        """List recently merged pull requests (paginated).
+
+        Fetches closed PRs and filters to those with merged_at set,
+        limited to the last `since_days` days.
+        """
+        from datetime import datetime, timedelta, timezone
+
+        cutoff = datetime.now(timezone.utc) - timedelta(days=since_days)
+        items = await self._paginate(
+            f"/repos/{owner}/{repo}/pulls",
+            params={
+                "state": "closed",
+                "sort": "updated",
+                "direction": "desc",
+                "per_page": "100",
+            },
+        )
+        merged = []
+        for item in items:
+            merged_at = item.get("merged_at")
+            if not merged_at:
+                continue
+            # Parse ISO datetime
+            dt = datetime.fromisoformat(merged_at.replace("Z", "+00:00"))
+            if dt >= cutoff:
+                merged.append(item)
+        return merged
+
     async def count_user_issues(self, owner: str, repo: str, username: str) -> int:
         """Count issues authored by a user in a repo via Search API.
 

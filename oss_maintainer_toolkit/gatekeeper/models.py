@@ -60,6 +60,8 @@ class PRMetadata(BaseModel):
     labels: list[str] = []
     total_additions: int = 0
     total_deletions: int = 0
+    state: str = "open"
+    merged_at: datetime | None = None
 
 
 # --- GitHub Issue Models ---
@@ -192,3 +194,32 @@ class LinkingReport(BaseModel):
     explicit_links: list[LinkSuggestion] = []
     orphan_issues: list[int] = []
     threshold: float = 0.0
+
+
+# --- Smart Stale Detection ---
+
+class StaleItem(BaseModel):
+    item_type: str          # "pr" or "issue"
+    number: int
+    title: str = ""
+    signal: str             # "superseded", "addressed", "blocked", "inactive"
+    related_number: int = 0
+    related_title: str = ""
+    similarity: float = 0.0
+    last_activity: datetime | None = None
+    explanation: str = ""
+
+
+class StalenessReport(BaseModel):
+    owner: str
+    repo: str
+    superseded_prs: list[StaleItem] = []
+    addressed_issues: list[StaleItem] = []
+    blocked_prs: list[StaleItem] = []
+    inactive_prs: list[StaleItem] = []
+    inactive_issues: list[StaleItem] = []
+    total_open_prs: int = 0
+    total_open_issues: int = 0
+    total_merged_prs_checked: int = 0
+    threshold: float = 0.0
+    inactive_days: int = 0

@@ -251,5 +251,67 @@ def link_issues(
         render_linking_report(report, console)
 
 
+@app.command(name="stale-detect")
+def stale_detect(
+    owner: str = typer.Argument(help="GitHub repo owner"),
+    repo: str = typer.Argument(help="GitHub repo name"),
+    threshold: float = typer.Option(0.0, "--threshold", help="Similarity threshold (0 = config default 0.75)"),
+    inactive_days: int = typer.Option(0, "--inactive-days", help="Inactivity threshold in days (0 = config default 90)"),
+    since_days: int = typer.Option(90, "--since-days", help="How far back to look for merged PRs"),
+    max_prs: int = typer.Option(0, "--max-prs", help="Max open PRs to analyze (0 = all)"),
+    max_issues: int = typer.Option(0, "--max-issues", help="Max open issues to analyze (0 = all)"),
+    json_output: bool = typer.Option(False, "--json", help="Output raw JSON report"),
+):
+    """Detect semantically stale PRs and issues (Tier 1 + Tier 2 only, $0 cost)."""
+    from oss_maintainer_toolkit.gatekeeper.dedup import compute_embedding
+    from oss_maintainer_toolkit.gatekeeper.github_client import GitHubClient
+    from oss_maintainer_toolkit.gatekeeper.ingest import ingest_batch
+    from oss_maintainer_toolkit.gatekeeper.issue_dedup import compute_issue_embedding
+    from oss_maintainer_toolkit.gatekeeper.issue_ingest import ingest_issue_batch
+    from oss_maintainer_toolkit.gatekeeper.staleness import detect_stale_items
+    from oss_maintainer_toolkit.gatekeeper.staleness_scorecard import (
+        render_staleness_report,
+        staleness_report_to_json,
+    )
+
+    async def _run():
+        async with GitHubClient() as client:
+            raw_open_prs = await client.list_open_prs(owner, repo)
+            raw_issues = await client.list_open_issues(owner, repo)
+            raw_merged_prs = await client.list_recently_merged_prs(owner, repo, since_days)
+
+            open_pr_numbers = [p["number"] for p in raw_open_prs]
+            issue_numbers = [i["number"] for i in raw_issues]
+            merged_pr_numbers = [p["number"] for p in raw_merged_prs]
+
+            if max_prs > 0:
+                open_pr_numbers = open_pr_numbers[:max_prs]
+            if max_issues > 0:
+                issue_numbers = issue_numbers[:max_issues]
+
+            open_prs = list(await ingest_batch(owner, repo, open_pr_numbers, client))
+            open_issues = list(await ingest_issue_batch(owner, repo, issue_numbers, client))
+            merged_prs = list(await ingest_batch(owner, repo, merged_pr_numbers, client))
+
+        open_pr_embeddings = [compute_embedding(pr) for pr in open_prs]
+        open_issue_embeddings = [compute_issue_embedding(issue) for issue in open_issues]
+        merged_pr_embeddings = [compute_embedding(pr) for pr in merged_prs]
+
+        return detect_stale_items(
+            open_prs, open_pr_embeddings,
+            open_issues, open_issue_embeddings,
+            merged_prs, merged_pr_embeddings,
+            threshold=threshold,
+            inactive_days=inactive_days,
+        )
+
+    report = asyncio.run(_run())
+
+    if json_output:
+        console.print(staleness_report_to_json(report))
+    else:
+        render_staleness_report(report, console)
+
+
 if __name__ == "__main__":
     app()

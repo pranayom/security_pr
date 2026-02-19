@@ -39,6 +39,10 @@ class GatekeeperSettings(BaseSettings):
     # Issue-to-PR Linking
     linking_similarity_threshold: float = 0.45
 
+    # Smart Stale Detection
+    stale_similarity_threshold: float = 0.75
+    stale_inactive_days: int = 90
+
     # Tier 3: Vision — LLM provider
     llm_provider: str = "auto"  # auto, openrouter, openai, anthropic, gemini, generic, claude_cli
     llm_api_key: str = ""  # unified key (auto-detects provider from prefix)

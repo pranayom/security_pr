@@ -83,6 +83,8 @@ def _normalize_pr(
         labels=labels,
         total_additions=total_additions,
         total_deletions=total_deletions,
+        state=pr_data.get("state", "open"),
+        merged_at=_parse_datetime(pr_data.get("merged_at")),
     )
 
 
