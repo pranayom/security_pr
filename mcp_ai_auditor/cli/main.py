@@ -135,7 +135,8 @@ def assess(
     pr_number: int = typer.Argument(help="Pull request number"),
     vision: str = typer.Option("", "--vision", help="Path to YAML vision document"),
     no_tier3: bool = typer.Option(False, "--no-tier3", help="Skip Tier 3 vision alignment"),
-    provider: str = typer.Option("", "--provider", help="LLM provider for Tier 3: openrouter (default) or claude_cli"),
+    provider: str = typer.Option("", "--provider", help="LLM provider: auto, openrouter, openai, anthropic, gemini, generic, claude_cli"),
+    api_key: str = typer.Option("", "--api-key", help="Unified API key (auto-detects provider from prefix)"),
     json_output: bool = typer.Option(False, "--json", help="Output raw JSON scorecard"),
 ):
     """Assess a GitHub PR for contribution risk (three-tier gated pipeline)."""
@@ -153,6 +154,7 @@ def assess(
             vision_document_path=vision,
             enable_tier3=not no_tier3,
             llm_provider=provider,
+            llm_api_key=api_key,
         )
         return scorecard
 

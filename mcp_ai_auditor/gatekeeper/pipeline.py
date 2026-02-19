@@ -27,6 +27,7 @@ async def run_pipeline(
     vision_document_path: str = "",
     enable_tier3: bool = True,
     llm_provider: str = "",
+    llm_api_key: str = "",
 ) -> AssessmentScorecard:
     """Run the three-tier gated pipeline.
 
@@ -42,7 +43,8 @@ async def run_pipeline(
         recent_prs: Recent PRs for temporal clustering.
         vision_document_path: Path to YAML vision document.
         enable_tier3: Whether to run Tier 3.
-        llm_provider: LLM provider for Tier 3 ("openrouter" or "claude_cli"). Defaults to config.
+        llm_provider: LLM provider for Tier 3. Defaults to config (auto-detect).
+        llm_api_key: Unified API key (auto-detects provider from prefix).
     """
     all_flags: list[SuspicionFlag] = []
     dimensions: list[DimensionScore] = []
@@ -118,7 +120,7 @@ async def run_pipeline(
     # --- Tier 3: Vision Alignment ---
     vision_result: VisionAlignmentResult | None = None
     if enable_tier3 and vision is not None:
-        vision_result = await run_vision_alignment(pr, vision, provider=llm_provider)
+        vision_result = await run_vision_alignment(pr, vision, provider=llm_provider, api_key=llm_api_key)
 
         dimensions.append(DimensionScore(
             dimension="Vision Alignment",

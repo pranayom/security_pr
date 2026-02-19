@@ -14,8 +14,16 @@ inputs:
     description: "Path to YAML vision document (relative to repo root)"
     required: false
     default: ""
+  llm_api_key:
+    description: "Unified LLM API key (auto-detects provider from prefix: sk-ant-*→Anthropic, sk-or-*→OpenRouter, sk-*→OpenAI, AIza*→Gemini)"
+    required: false
+    default: ""
+  llm_provider:
+    description: "LLM provider for Tier 3: auto (default), openrouter, openai, anthropic, gemini, generic, claude_cli"
+    required: false
+    default: "auto"
   openrouter_api_key:
-    description: "OpenRouter API key for Tier 3 vision alignment (free models, $0 cost). Tier 3 skipped if not provided."
+    description: "OpenRouter API key for Tier 3 vision alignment (free models, $0 cost). Tier 3 skipped if no LLM key provided."
     required: false
     default: ""
   openrouter_model:
@@ -67,6 +75,8 @@ runs:
       env:
         GITHUB_TOKEN: ${{ inputs.github_token }}
         AUDITOR_GK_GITHUB_TOKEN: ${{ inputs.github_token }}
+        AUDITOR_GK_LLM_API_KEY: ${{ inputs.llm_api_key }}
+        AUDITOR_GK_LLM_PROVIDER: ${{ inputs.llm_provider }}
         AUDITOR_GK_OPENROUTER_API_KEY: ${{ inputs.openrouter_api_key }}
         AUDITOR_GK_OPENROUTER_MODEL: ${{ inputs.openrouter_model }}
         AUDITOR_GK_DUPLICATE_THRESHOLD: ${{ inputs.duplicate_threshold }}

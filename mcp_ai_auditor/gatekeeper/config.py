@@ -32,13 +32,35 @@ class GatekeeperSettings(BaseSettings):
     min_test_ratio: float = 0.1
 
     # Tier 3: Vision — LLM provider
-    llm_provider: str = "openrouter"  # "openrouter" or "claude_cli"
+    llm_provider: str = "auto"  # auto, openrouter, openai, anthropic, gemini, generic, claude_cli
+    llm_api_key: str = ""  # unified key (auto-detects provider from prefix)
+    llm_timeout_seconds: int = 60  # shared timeout for all HTTP providers
 
-    # OpenRouter (primary — free, works in CI)
+    # OpenRouter (free, works in CI)
     openrouter_api_key: str = ""
     openrouter_model: str = "openai/gpt-oss-120b:free"
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_timeout_seconds: int = 60
+
+    # OpenAI direct
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
+    openai_base_url: str = "https://api.openai.com/v1"
+
+    # Anthropic direct
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-sonnet-4-20250514"
+    anthropic_base_url: str = "https://api.anthropic.com"
+
+    # Google Gemini
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.0-flash"
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
+
+    # Generic OpenAI-compatible
+    generic_api_key: str = ""
+    generic_model: str = ""
+    generic_base_url: str = ""  # required for generic
 
     # Claude CLI (fallback — requires local Max subscription)
     claude_command: str = "claude"

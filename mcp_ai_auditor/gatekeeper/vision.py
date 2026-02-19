@@ -1,11 +1,14 @@
-"""Tier 3: Vision alignment assessment via OpenRouter (primary) or claude --print (fallback)."""
+"""Tier 3: Vision alignment assessment via multiple LLM providers.
+
+Supports: OpenRouter, OpenAI, Anthropic, Gemini, Generic OpenAI-compatible, Claude CLI.
+Provider auto-detection from API key prefix when llm_provider is "auto".
+"""
 
 from __future__ import annotations
 
 import asyncio
 import json
 
-import httpx
 import yaml
 
 from mcp_ai_auditor.gatekeeper.config import gatekeeper_settings
@@ -16,8 +19,15 @@ from mcp_ai_auditor.gatekeeper.models import (
     VisionDocument,
     VisionPrinciple,
 )
+from mcp_ai_auditor.gatekeeper.providers import (
+    ProviderError,
+    call_anthropic,
+    call_gemini,
+    call_openai_compatible,
+    resolve_provider_and_key,
+)
 
-# JSON Schema for structured outputs — enforced by OpenRouter's strict mode
+# JSON Schema for structured outputs — enforced by OpenAI-compatible providers
 SCORECARD_SCHEMA = {
     "name": "pr_vision_scorecard",
     "strict": True,
@@ -53,6 +63,23 @@ SYSTEM_PROMPT = (
     "You are a code reviewer assessing pull requests against a project's vision document. "
     "Return ONLY valid JSON matching the provided schema. No markdown, no extra keys, no extra text."
 )
+
+
+def _build_schema_instruction() -> str:
+    """Build a text instruction describing the required JSON schema.
+
+    Used for providers that don't support structured output mode (Anthropic, Gemini).
+    """
+    return (
+        "\n\nYou MUST respond with ONLY valid JSON matching this exact schema:\n"
+        "{\n"
+        '  "alignment_score": <number 0.0-1.0>,\n'
+        '  "violated_principles": [<string>, ...],\n'
+        '  "strengths": [<string>, ...],\n'
+        '  "concerns": [<string>, ...]\n'
+        "}\n"
+        "No other keys, no markdown fences, no extra text."
+    )
 
 
 def load_vision_document(path: str) -> VisionDocument:
@@ -131,81 +158,7 @@ def _parse_response(data: dict) -> VisionAlignmentResult:
     )
 
 
-# --- OpenRouter provider ---
-
-async def _run_openrouter(
-    prompt: str,
-    api_key: str = "",
-    model: str = "",
-    base_url: str = "",
-    timeout_seconds: int = 0,
-) -> VisionAlignmentResult:
-    """Run vision alignment via OpenRouter's chat completions API with structured outputs."""
-    api_key = api_key or gatekeeper_settings.openrouter_api_key
-    model = model or gatekeeper_settings.openrouter_model
-    base_url = base_url or gatekeeper_settings.openrouter_base_url
-    timeout = timeout_seconds or gatekeeper_settings.openrouter_timeout_seconds
-
-    if not api_key:
-        return VisionAlignmentResult(
-            outcome=TierOutcome.ERROR,
-            concerns=["No OpenRouter API key. Set AUDITOR_GK_OPENROUTER_API_KEY or switch to claude_cli provider."],
-        )
-
-    payload = {
-        "model": model,
-        "temperature": 0,
-        "seed": 42,
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt},
-        ],
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": SCORECARD_SCHEMA,
-        },
-    }
-
-    try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            resp = await client.post(
-                f"{base_url}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-            )
-
-        if resp.status_code != 200:
-            return VisionAlignmentResult(
-                outcome=TierOutcome.ERROR,
-                concerns=[f"OpenRouter API returned {resp.status_code}: {resp.text[:500]}"],
-            )
-
-        body = resp.json()
-        content = body["choices"][0]["message"]["content"]
-        data = json.loads(content)
-        return _parse_response(data)
-
-    except httpx.TimeoutException:
-        return VisionAlignmentResult(
-            outcome=TierOutcome.ERROR,
-            concerns=[f"OpenRouter request timed out after {timeout}s"],
-        )
-    except (KeyError, IndexError) as e:
-        return VisionAlignmentResult(
-            outcome=TierOutcome.ERROR,
-            concerns=[f"Unexpected OpenRouter response structure: {e}"],
-        )
-    except json.JSONDecodeError as e:
-        return VisionAlignmentResult(
-            outcome=TierOutcome.ERROR,
-            concerns=[f"Failed to parse OpenRouter response as JSON: {e}"],
-        )
-
-
-# --- Claude CLI provider ---
+# --- Claude CLI provider (stays here — subprocess, not HTTP) ---
 
 async def _run_claude_cli(
     prompt: str,
@@ -255,13 +208,29 @@ async def _run_claude_cli(
         )
 
 
+# --- Provider dispatch helpers ---
+
+def _get_provider_config(provider: str, api_key: str, settings=None):
+    """Get model, base_url, and timeout for a given provider."""
+    s = settings or gatekeeper_settings
+    configs = {
+        "openrouter": (s.openrouter_model, s.openrouter_base_url, s.openrouter_timeout_seconds),
+        "openai": (s.openai_model, s.openai_base_url, s.llm_timeout_seconds),
+        "anthropic": (s.anthropic_model, s.anthropic_base_url, s.llm_timeout_seconds),
+        "gemini": (s.gemini_model, s.gemini_base_url, s.llm_timeout_seconds),
+        "generic": (s.generic_model, s.generic_base_url, s.llm_timeout_seconds),
+    }
+    return configs.get(provider, ("", "", s.llm_timeout_seconds))
+
+
 # --- Unified entry point ---
 
 async def run_vision_alignment(
     pr: PRMetadata,
     vision: VisionDocument,
     provider: str = "",
-    # OpenRouter overrides
+    api_key: str = "",
+    # OpenRouter overrides (backward compat)
     openrouter_api_key: str = "",
     openrouter_model: str = "",
     # Claude CLI overrides
@@ -270,26 +239,117 @@ async def run_vision_alignment(
 ) -> VisionAlignmentResult:
     """Run vision alignment assessment using the configured LLM provider.
 
-    Provider selection: openrouter (default) or claude_cli.
-    Override via provider param or AUDITOR_GK_LLM_PROVIDER env var.
+    Provider selection (in order):
+    1. Explicit `provider` param
+    2. Auto-detect from `api_key` prefix
+    3. Config-level auto-detection via AUDITOR_GK_LLM_PROVIDER / keys
+
+    Supported providers: auto, openrouter, openai, anthropic, gemini, generic, claude_cli.
     """
-    provider = provider or gatekeeper_settings.llm_provider
     prompt = _build_prompt(pr, vision)
 
-    if provider == "openrouter":
-        return await _run_openrouter(
-            prompt,
-            api_key=openrouter_api_key,
-            timeout_seconds=timeout_seconds,
-        )
-    elif provider == "claude_cli":
+    # Resolve provider and key
+    if provider and provider != "auto":
+        effective_provider = provider
+        effective_key = api_key or openrouter_api_key  # backward compat for openrouter
+    elif api_key:
+        from mcp_ai_auditor.gatekeeper.providers import detect_provider_from_key
+        detected = detect_provider_from_key(api_key)
+        effective_provider = detected or (provider if provider else gatekeeper_settings.llm_provider)
+        effective_key = api_key
+        # If still "auto" after detection failed, fall through to resolve
+        if effective_provider == "auto":
+            effective_provider, effective_key = resolve_provider_and_key(gatekeeper_settings)
+    else:
+        # Use config-level resolution
+        resolved_provider, resolved_key = resolve_provider_and_key(gatekeeper_settings)
+        effective_provider = provider if (provider and provider != "auto") else resolved_provider
+        effective_key = resolved_key
+        # Backward compat: explicit openrouter_api_key param overrides
+        if effective_provider == "openrouter" and openrouter_api_key:
+            effective_key = openrouter_api_key
+
+    # Dispatch to provider
+    if effective_provider == "claude_cli":
         return await _run_claude_cli(
             prompt,
             claude_command=claude_command,
             timeout_seconds=timeout_seconds,
         )
-    else:
-        return VisionAlignmentResult(
-            outcome=TierOutcome.ERROR,
-            concerns=[f"Unknown LLM provider '{provider}'. Use 'openrouter' or 'claude_cli'."],
-        )
+
+    if effective_provider in ("openrouter", "openai", "generic"):
+        model, base_url, default_timeout = _get_provider_config(effective_provider, effective_key)
+        if not effective_key:
+            return VisionAlignmentResult(
+                outcome=TierOutcome.ERROR,
+                concerns=[f"No API key for {effective_provider}. Set AUDITOR_GK_LLM_API_KEY or the provider-specific key."],
+            )
+        try:
+            data = await call_openai_compatible(
+                prompt=prompt,
+                system_prompt=SYSTEM_PROMPT,
+                json_schema=SCORECARD_SCHEMA,
+                api_key=effective_key,
+                model=openrouter_model or model,
+                base_url=base_url,
+                timeout_seconds=timeout_seconds or default_timeout,
+            )
+            return _parse_response(data)
+        except ProviderError as e:
+            return VisionAlignmentResult(
+                outcome=TierOutcome.ERROR,
+                concerns=[f"{effective_provider}: {e}"],
+            )
+
+    if effective_provider == "anthropic":
+        model, base_url, default_timeout = _get_provider_config("anthropic", effective_key)
+        if not effective_key:
+            return VisionAlignmentResult(
+                outcome=TierOutcome.ERROR,
+                concerns=["No API key for Anthropic. Set AUDITOR_GK_LLM_API_KEY or AUDITOR_GK_ANTHROPIC_API_KEY."],
+            )
+        prompt_with_schema = prompt + _build_schema_instruction()
+        try:
+            data = await call_anthropic(
+                prompt=prompt_with_schema,
+                system_prompt=SYSTEM_PROMPT,
+                api_key=effective_key,
+                model=model,
+                base_url=base_url,
+                timeout_seconds=timeout_seconds or default_timeout,
+            )
+            return _parse_response(data)
+        except ProviderError as e:
+            return VisionAlignmentResult(
+                outcome=TierOutcome.ERROR,
+                concerns=[f"anthropic: {e}"],
+            )
+
+    if effective_provider == "gemini":
+        model, base_url, default_timeout = _get_provider_config("gemini", effective_key)
+        if not effective_key:
+            return VisionAlignmentResult(
+                outcome=TierOutcome.ERROR,
+                concerns=["No API key for Gemini. Set AUDITOR_GK_LLM_API_KEY or AUDITOR_GK_GEMINI_API_KEY."],
+            )
+        prompt_with_schema = prompt + _build_schema_instruction()
+        try:
+            data = await call_gemini(
+                prompt=prompt_with_schema,
+                system_prompt=SYSTEM_PROMPT,
+                api_key=effective_key,
+                model=model,
+                base_url=base_url,
+                timeout_seconds=timeout_seconds or default_timeout,
+            )
+            return _parse_response(data)
+        except ProviderError as e:
+            return VisionAlignmentResult(
+                outcome=TierOutcome.ERROR,
+                concerns=[f"gemini: {e}"],
+            )
+
+    return VisionAlignmentResult(
+        outcome=TierOutcome.ERROR,
+        concerns=[f"Unknown LLM provider '{effective_provider}'. Use 'auto', 'openrouter', 'openai', 'anthropic', 'gemini', 'generic', or 'claude_cli'."],
+    )

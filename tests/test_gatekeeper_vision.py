@@ -12,6 +12,7 @@ from mcp_ai_auditor.gatekeeper.models import PRAuthor, PRMetadata, TierOutcome
 from mcp_ai_auditor.gatekeeper.vision import (
     SCORECARD_SCHEMA,
     _build_prompt,
+    _build_schema_instruction,
     _parse_response,
     load_vision_document,
     run_vision_alignment,
@@ -118,27 +119,15 @@ class TestOpenRouterProvider:
             author=PRAuthor(login="u"),
         )
 
-        response_body = {
-            "choices": [{
-                "message": {
-                    "content": json.dumps({
-                        "alignment_score": 0.85,
-                        "violated_principles": [],
-                        "strengths": ["Good tests", "Clean code"],
-                        "concerns": [],
-                    })
-                }
-            }]
+        mock_data = {
+            "alignment_score": 0.85,
+            "violated_principles": [],
+            "strengths": ["Good tests", "Clean code"],
+            "concerns": [],
         }
 
-        mock_response = httpx.Response(200, json=response_body)
-
-        with patch("mcp_ai_auditor.gatekeeper.vision.httpx.AsyncClient") as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock(return_value=False)
-            mock_client_cls.return_value = mock_client
+        with patch("mcp_ai_auditor.gatekeeper.vision.call_openai_compatible", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = mock_data
 
             result = await run_vision_alignment(
                 pr, vision, provider="openrouter", openrouter_api_key="test-key",
@@ -147,14 +136,7 @@ class TestOpenRouterProvider:
         assert result.outcome == TierOutcome.PASS
         assert result.alignment_score == 0.85
         assert len(result.strengths) == 2
-
-        # Verify the request payload structure
-        call_args = mock_client.post.call_args
-        payload = call_args.kwargs["json"]
-        assert payload["temperature"] == 0
-        assert payload["seed"] == 42
-        assert payload["response_format"]["type"] == "json_schema"
-        assert payload["response_format"]["json_schema"]["strict"] is True
+        mock_call.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_low_alignment_gated(self):
@@ -164,27 +146,15 @@ class TestOpenRouterProvider:
             author=PRAuthor(login="u"),
         )
 
-        response_body = {
-            "choices": [{
-                "message": {
-                    "content": json.dumps({
-                        "alignment_score": 0.2,
-                        "violated_principles": ["Security First"],
-                        "strengths": [],
-                        "concerns": ["Bypasses authentication checks"],
-                    })
-                }
-            }]
+        mock_data = {
+            "alignment_score": 0.2,
+            "violated_principles": ["Security First"],
+            "strengths": [],
+            "concerns": ["Bypasses authentication checks"],
         }
 
-        mock_response = httpx.Response(200, json=response_body)
-
-        with patch("mcp_ai_auditor.gatekeeper.vision.httpx.AsyncClient") as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock(return_value=False)
-            mock_client_cls.return_value = mock_client
+        with patch("mcp_ai_auditor.gatekeeper.vision.call_openai_compatible", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = mock_data
 
             result = await run_vision_alignment(
                 pr, vision, provider="openrouter", openrouter_api_key="test-key",
@@ -208,28 +178,26 @@ class TestOpenRouterProvider:
             mock_settings.openrouter_model = "openai/gpt-oss-120b:free"
             mock_settings.openrouter_base_url = "https://openrouter.ai/api/v1"
             mock_settings.openrouter_timeout_seconds = 60
+            mock_settings.llm_api_key = ""
+            mock_settings.llm_timeout_seconds = 60
 
             result = await run_vision_alignment(pr, vision, provider="openrouter")
 
         assert result.outcome == TierOutcome.ERROR
-        assert any("API key" in c for c in result.concerns)
+        assert any("API key" in c or "No API key" in c for c in result.concerns)
 
     @pytest.mark.asyncio
-    async def test_api_error_status(self):
+    async def test_provider_error_returns_error_result(self):
         vision = load_vision_document(str(FIXTURES / "sample_vision_document.yaml"))
         pr = PRMetadata(
             owner="o", repo="r", number=42, title="Test",
             author=PRAuthor(login="u"),
         )
 
-        mock_response = httpx.Response(429, text="Rate limited")
+        from mcp_ai_auditor.gatekeeper.providers import ProviderError
 
-        with patch("mcp_ai_auditor.gatekeeper.vision.httpx.AsyncClient") as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock(return_value=False)
-            mock_client_cls.return_value = mock_client
+        with patch("mcp_ai_auditor.gatekeeper.vision.call_openai_compatible", new_callable=AsyncMock) as mock_call:
+            mock_call.side_effect = ProviderError("API returned 429: Rate limited")
 
             result = await run_vision_alignment(
                 pr, vision, provider="openrouter", openrouter_api_key="test-key",
@@ -246,12 +214,10 @@ class TestOpenRouterProvider:
             author=PRAuthor(login="u"),
         )
 
-        with patch("mcp_ai_auditor.gatekeeper.vision.httpx.AsyncClient") as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client.post = AsyncMock(side_effect=httpx.ReadTimeout("timed out"))
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock(return_value=False)
-            mock_client_cls.return_value = mock_client
+        from mcp_ai_auditor.gatekeeper.providers import ProviderError
+
+        with patch("mcp_ai_auditor.gatekeeper.vision.call_openai_compatible", new_callable=AsyncMock) as mock_call:
+            mock_call.side_effect = ProviderError("Request timed out after 60s")
 
             result = await run_vision_alignment(
                 pr, vision, provider="openrouter", openrouter_api_key="test-key",
@@ -268,20 +234,10 @@ class TestOpenRouterProvider:
             author=PRAuthor(login="u"),
         )
 
-        response_body = {
-            "choices": [{
-                "message": {"content": "not valid json{{{"}
-            }]
-        }
+        from mcp_ai_auditor.gatekeeper.providers import ProviderError
 
-        mock_response = httpx.Response(200, json=response_body)
-
-        with patch("mcp_ai_auditor.gatekeeper.vision.httpx.AsyncClient") as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock(return_value=False)
-            mock_client_cls.return_value = mock_client
+        with patch("mcp_ai_auditor.gatekeeper.vision.call_openai_compatible", new_callable=AsyncMock) as mock_call:
+            mock_call.side_effect = ProviderError("Failed to parse response as JSON: ...")
 
             result = await run_vision_alignment(
                 pr, vision, provider="openrouter", openrouter_api_key="test-key",
@@ -298,16 +254,10 @@ class TestOpenRouterProvider:
             author=PRAuthor(login="u"),
         )
 
-        # Missing choices key
-        response_body = {"error": "something went wrong"}
-        mock_response = httpx.Response(200, json=response_body)
+        from mcp_ai_auditor.gatekeeper.providers import ProviderError
 
-        with patch("mcp_ai_auditor.gatekeeper.vision.httpx.AsyncClient") as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock(return_value=False)
-            mock_client_cls.return_value = mock_client
+        with patch("mcp_ai_auditor.gatekeeper.vision.call_openai_compatible", new_callable=AsyncMock) as mock_call:
+            mock_call.side_effect = ProviderError("Unexpected response structure: 'choices'")
 
             result = await run_vision_alignment(
                 pr, vision, provider="openrouter", openrouter_api_key="test-key",
@@ -450,6 +400,16 @@ class TestClaudeCliProvider:
         assert any("JSON" in c for c in result.concerns)
 
 
+class TestSchemaInstruction:
+    def test_schema_instruction_contains_required_fields(self):
+        instruction = _build_schema_instruction()
+        assert "alignment_score" in instruction
+        assert "violated_principles" in instruction
+        assert "strengths" in instruction
+        assert "concerns" in instruction
+        assert "JSON" in instruction
+
+
 class TestProviderDispatch:
     @pytest.mark.asyncio
     async def test_unknown_provider_errors(self):
@@ -465,8 +425,111 @@ class TestProviderDispatch:
         assert any("Unknown LLM provider" in c for c in result.concerns)
 
     @pytest.mark.asyncio
-    async def test_default_provider_is_openrouter(self):
-        """Verify the default provider from settings is openrouter."""
+    async def test_default_provider_is_auto(self):
+        """Verify the default provider from settings is auto."""
         from mcp_ai_auditor.gatekeeper.config import GatekeeperSettings
         settings = GatekeeperSettings()
-        assert settings.llm_provider == "openrouter"
+        assert settings.llm_provider == "auto"
+
+    @pytest.mark.asyncio
+    async def test_anthropic_dispatch(self):
+        vision = load_vision_document(str(FIXTURES / "sample_vision_document.yaml"))
+        pr = PRMetadata(
+            owner="o", repo="r", number=42, title="Test",
+            author=PRAuthor(login="u"),
+        )
+
+        mock_data = {
+            "alignment_score": 0.75,
+            "violated_principles": [],
+            "strengths": ["Good"],
+            "concerns": [],
+        }
+
+        with patch("mcp_ai_auditor.gatekeeper.vision.call_anthropic", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = mock_data
+
+            result = await run_vision_alignment(
+                pr, vision, provider="anthropic", api_key="sk-ant-test123",
+            )
+
+        assert result.outcome == TierOutcome.PASS
+        assert result.alignment_score == 0.75
+        mock_call.assert_called_once()
+        # Verify schema instruction was appended
+        call_prompt = mock_call.call_args.kwargs["prompt"]
+        assert "alignment_score" in call_prompt
+        assert "JSON" in call_prompt
+
+    @pytest.mark.asyncio
+    async def test_gemini_dispatch(self):
+        vision = load_vision_document(str(FIXTURES / "sample_vision_document.yaml"))
+        pr = PRMetadata(
+            owner="o", repo="r", number=42, title="Test",
+            author=PRAuthor(login="u"),
+        )
+
+        mock_data = {
+            "alignment_score": 0.6,
+            "violated_principles": [],
+            "strengths": [],
+            "concerns": ["Minor issue"],
+        }
+
+        with patch("mcp_ai_auditor.gatekeeper.vision.call_gemini", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = mock_data
+
+            result = await run_vision_alignment(
+                pr, vision, provider="gemini", api_key="AIzaTest",
+            )
+
+        assert result.outcome == TierOutcome.PASS
+        assert result.alignment_score == 0.6
+        mock_call.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_openai_dispatch(self):
+        vision = load_vision_document(str(FIXTURES / "sample_vision_document.yaml"))
+        pr = PRMetadata(
+            owner="o", repo="r", number=42, title="Test",
+            author=PRAuthor(login="u"),
+        )
+
+        mock_data = {
+            "alignment_score": 0.9,
+            "violated_principles": [],
+            "strengths": ["Excellent"],
+            "concerns": [],
+        }
+
+        with patch("mcp_ai_auditor.gatekeeper.vision.call_openai_compatible", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = mock_data
+
+            result = await run_vision_alignment(
+                pr, vision, provider="openai", api_key="sk-test123",
+            )
+
+        assert result.outcome == TierOutcome.PASS
+        assert result.alignment_score == 0.9
+        mock_call.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_auto_detect_from_api_key(self):
+        """Verify auto-detection dispatches to the right provider based on key prefix."""
+        vision = load_vision_document(str(FIXTURES / "sample_vision_document.yaml"))
+        pr = PRMetadata(
+            owner="o", repo="r", number=42, title="Test",
+            author=PRAuthor(login="u"),
+        )
+
+        mock_data = {"alignment_score": 0.8, "violated_principles": [], "strengths": [], "concerns": []}
+
+        with patch("mcp_ai_auditor.gatekeeper.vision.call_anthropic", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = mock_data
+
+            result = await run_vision_alignment(
+                pr, vision, api_key="sk-ant-autodetect",
+            )
+
+        assert result.outcome == TierOutcome.PASS
+        mock_call.assert_called_once()

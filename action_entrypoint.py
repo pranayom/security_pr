@@ -104,15 +104,24 @@ async def main(owner: str, repo: str, pr_number: int) -> None:
         if workspace:
             vision_path = os.path.join(workspace, vision_path)
 
-    # Determine Tier 3 availability
+    # Determine Tier 3 availability — any LLM API key enables it
     enforce_vision = os.environ.get("INPUT_ENFORCE_VISION", "false").lower() == "true"
-    has_openrouter = bool(os.environ.get("AUDITOR_GK_OPENROUTER_API_KEY", ""))
-    enable_tier3 = enforce_vision and has_openrouter and bool(vision_path)
+    has_llm_key = any(
+        bool(os.environ.get(k, ""))
+        for k in [
+            "AUDITOR_GK_LLM_API_KEY",
+            "AUDITOR_GK_OPENROUTER_API_KEY",
+            "AUDITOR_GK_OPENAI_API_KEY",
+            "AUDITOR_GK_ANTHROPIC_API_KEY",
+            "AUDITOR_GK_GEMINI_API_KEY",
+        ]
+    )
+    enable_tier3 = enforce_vision and has_llm_key and bool(vision_path)
 
     if not enforce_vision:
         print("Vision enforcement disabled (enforce_vision=false) — Tier 3 skipped")
-    elif not has_openrouter:
-        print("No OPENROUTER_API_KEY — running Tiers 1+2 only")
+    elif not has_llm_key:
+        print("No LLM API key found — running Tiers 1+2 only (set AUDITOR_GK_LLM_API_KEY or a provider-specific key)")
     elif not vision_path:
         print("No vision document — Tier 3 skipped")
 
