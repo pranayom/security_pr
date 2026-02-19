@@ -170,3 +170,25 @@ class IssueScorecard(BaseModel):
     vision_result: VisionAlignmentResult | None = None
     flags: list[SuspicionFlag] = []
     summary: str = ""
+
+
+# --- Issue-to-PR Linking ---
+
+class LinkSuggestion(BaseModel):
+    pr_number: int
+    issue_number: int
+    similarity: float
+    pr_title: str = ""
+    issue_title: str = ""
+    is_explicit: bool = False  # True if PR body already references this issue
+
+
+class LinkingReport(BaseModel):
+    owner: str
+    repo: str
+    total_prs: int = 0
+    total_issues: int = 0
+    suggestions: list[LinkSuggestion] = []
+    explicit_links: list[LinkSuggestion] = []
+    orphan_issues: list[int] = []
+    threshold: float = 0.0

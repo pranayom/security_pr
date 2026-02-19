@@ -204,5 +204,52 @@ def triage_issue(
         render_issue_scorecard(scorecard, console)
 
 
+@app.command(name="link-issues")
+def link_issues(
+    owner: str = typer.Argument(help="GitHub repo owner"),
+    repo: str = typer.Argument(help="GitHub repo name"),
+    threshold: float = typer.Option(0.0, "--threshold", help="Similarity threshold (0 = config default 0.45)"),
+    max_prs: int = typer.Option(0, "--max-prs", help="Max PRs to analyze (0 = all)"),
+    max_issues: int = typer.Option(0, "--max-issues", help="Max issues to analyze (0 = all)"),
+    json_output: bool = typer.Option(False, "--json", help="Output raw JSON report"),
+):
+    """Link issues to PRs using embedding similarity (Tier 1 only)."""
+    from oss_maintainer_toolkit.gatekeeper.dedup import compute_embedding
+    from oss_maintainer_toolkit.gatekeeper.github_client import GitHubClient
+    from oss_maintainer_toolkit.gatekeeper.ingest import ingest_batch
+    from oss_maintainer_toolkit.gatekeeper.issue_dedup import compute_issue_embedding
+    from oss_maintainer_toolkit.gatekeeper.issue_ingest import ingest_issue_batch
+    from oss_maintainer_toolkit.gatekeeper.linking import find_issue_pr_links
+    from oss_maintainer_toolkit.gatekeeper.linking_scorecard import linking_report_to_json, render_linking_report
+
+    async def _run():
+        async with GitHubClient() as client:
+            raw_prs = await client.list_open_prs(owner, repo)
+            raw_issues = await client.list_open_issues(owner, repo)
+
+            pr_numbers = [p["number"] for p in raw_prs]
+            issue_numbers = [i["number"] for i in raw_issues]
+
+            if max_prs > 0:
+                pr_numbers = pr_numbers[:max_prs]
+            if max_issues > 0:
+                issue_numbers = issue_numbers[:max_issues]
+
+            prs = list(await ingest_batch(owner, repo, pr_numbers, client))
+            issues = list(await ingest_issue_batch(owner, repo, issue_numbers, client))
+
+        pr_embeddings = [compute_embedding(pr) for pr in prs]
+        issue_embeddings = [compute_issue_embedding(issue) for issue in issues]
+
+        return find_issue_pr_links(prs, pr_embeddings, issues, issue_embeddings, threshold)
+
+    report = asyncio.run(_run())
+
+    if json_output:
+        console.print(linking_report_to_json(report))
+    else:
+        render_linking_report(report, console)
+
+
 if __name__ == "__main__":
     app()

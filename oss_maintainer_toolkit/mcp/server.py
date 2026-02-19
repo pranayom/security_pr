@@ -137,5 +137,56 @@ async def triage_issue_tool(
     return scorecard.model_dump_json(indent=2)
 
 
+@mcp.tool()
+async def link_issues_to_prs_tool(
+    owner: str,
+    repo: str,
+    threshold: float = 0.0,
+) -> str:
+    """Link GitHub issues to pull requests using embedding similarity.
+
+    Pure Tier 1 analysis: computes cosine similarity between PR diffs and
+    issue descriptions to suggest which PRs address which issues. Fills
+    the gap when contributors don't write "Fixes #N" explicitly.
+
+    Returns a JSON report with suggested links (sorted by similarity),
+    explicit links already present, and orphan issues with no linked PRs.
+
+    Args:
+        owner: GitHub repo owner (e.g. "nicoseng").
+        repo: GitHub repo name (e.g. "OpenClaw").
+        threshold: Similarity threshold (0 = use config default of 0.45).
+    """
+    from oss_maintainer_toolkit.gatekeeper.cache import PRCache
+    from oss_maintainer_toolkit.gatekeeper.config import gatekeeper_settings
+    from oss_maintainer_toolkit.gatekeeper.dedup import compute_embedding
+    from oss_maintainer_toolkit.gatekeeper.github_client import GitHubClient
+    from oss_maintainer_toolkit.gatekeeper.ingest import ingest_batch
+    from oss_maintainer_toolkit.gatekeeper.issue_cache import IssueCache
+    from oss_maintainer_toolkit.gatekeeper.issue_dedup import compute_issue_embedding
+    from oss_maintainer_toolkit.gatekeeper.issue_ingest import ingest_issue_batch
+    from oss_maintainer_toolkit.gatekeeper.linking import find_issue_pr_links
+    from oss_maintainer_toolkit.gatekeeper.models import PRMetadata, IssueMetadata
+
+    async with GitHubClient() as client:
+        # Fetch all open PRs and issues
+        raw_prs = await client.list_open_prs(owner, repo)
+        raw_issues = await client.list_open_issues(owner, repo)
+
+        pr_numbers = [p["number"] for p in raw_prs]
+        issue_numbers = [i["number"] for i in raw_issues]
+
+        # Batch ingest
+        prs = list(await ingest_batch(owner, repo, pr_numbers, client))
+        issues = list(await ingest_issue_batch(owner, repo, issue_numbers, client))
+
+    # Compute embeddings
+    pr_embeddings = [compute_embedding(pr) for pr in prs]
+    issue_embeddings = [compute_issue_embedding(issue) for issue in issues]
+
+    report = find_issue_pr_links(prs, pr_embeddings, issues, issue_embeddings, threshold)
+    return report.model_dump_json(indent=2)
+
+
 if __name__ == "__main__":
     mcp.run()
