@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mcp-ai-auditor"
-version = "0.1.0"
+version = "0.2.0"
 description = "AI-powered security auditor — MCP tools for vulnerability scanning, data flow analysis, and CVE checking"
 readme = "README.md"
 license = "MIT"
