@@ -1,0 +1,258 @@
+{
+  "metadata": {
+    "owner": "openclaw",
+    "repo": "openclaw",
+    "count": 150,
+    "total_open": 3848,
+    "elapsed_seconds": 89.9084403514862,
+    "date": "2026-02-18T20:19:52.143931"
+  },
+  "verdicts": {
+    "fast_track": 115,
+    "review_required": 35,
+    "recommend_close": 0
+  },
+  "clusters_090": [],
+  "highest_risk": [
+    {
+      "pr": 20343,
+      "title": "/quota and usage quota information on usage page",
+      "author": "romeroej2",
+      "score": 1.0,
+      "flags": [
+        "first_contribution",
+        "sensitive_paths",
+        "low_test_ratio",
+        "large_diff_hiding",
+        "temporal_clustering"
+      ]
+    },
+    {
+      "pr": 20405,
+      "title": "feat(ui): KaTeX math rendering, collapsible tool cards, image attach button & LaTeX\u2192Unicode for channels",
+      "author": "ayaanngandhi",
+      "score": 0.95,
+      "flags": [
+        "first_contribution",
+        "sensitive_paths",
+        "low_test_ratio",
+        "large_diff_hiding",
+        "temporal_clustering"
+      ]
+    },
+    {
+      "pr": 20498,
+      "title": "UI: modularize control UI architecture and normalize spacing.",
+      "author": "MAGE-VOID",
+      "score": 0.8,
+      "flags": [
+        "first_contribution",
+        "sensitive_paths",
+        "low_test_ratio",
+        "temporal_clustering"
+      ]
+    },
+    {
+      "pr": 20493,
+      "title": "feat(agents): add compaction model override for compaction runs",
+      "author": "PastaPastaPasta",
+      "score": 0.8,
+      "flags": [
+        "first_contribution",
+        "sensitive_paths",
+        "large_diff_hiding",
+        "temporal_clustering"
+      ]
+    },
+    {
+      "pr": 20476,
+      "title": "Providers: add DigitalOcean Gradient AI inference endpoint",
+      "author": "adugan-do",
+      "score": 0.8,
+      "flags": [
+        "first_contribution",
+        "sensitive_paths",
+        "low_test_ratio",
+        "temporal_clustering"
+      ]
+    },
+    {
+      "pr": 20388,
+      "title": "fix(failover): don't skip same-provider fallback models when cooldown is rate-limit only",
+      "author": "Limitless2023",
+      "score": 0.8,
+      "flags": [
+        "first_contribution",
+        "sensitive_paths",
+        "low_test_ratio",
+        "temporal_clustering"
+      ]
+    },
+    {
+      "pr": 20378,
+      "title": "refactor: add best-effort comments to empty catch blocks",
+      "author": "Matrix-Meta",
+      "score": 0.8,
+      "flags": [
+        "first_contribution",
+        "sensitive_paths",
+        "low_test_ratio",
+        "temporal_clustering"
+      ]
+    },
+    {
+      "pr": 20266,
+      "title": "feat: skills-audit \u2014 Phase 1 security scanner for installed skills",
+      "author": "theMachineClay",
+      "score": 0.8,
+      "flags": [
+        "first_contribution",
+        "sensitive_paths",
+        "low_test_ratio",
+        "temporal_clustering"
+      ]
+    },
+    {
+      "pr": 20253,
+      "title": "fix(security): eliminate timing side-channel in safeEqualSecret via double-HMAC (#12546)",
+      "author": "arosstale",
+      "score": 0.8,
+      "flags": [
+        "first_contribution",
+        "sensitive_paths",
+        "low_test_ratio",
+        "temporal_clustering"
+      ]
+    },
+    {
+      "pr": 20494,
+      "title": "Infra: add two-node ops docs and env templates",
+      "author": "kermitv",
+      "score": 0.65,
+      "flags": [
+        "first_contribution",
+        "sensitive_paths",
+        "low_test_ratio",
+        "temporal_clustering"
+      ]
+    },
+    {
+      "pr": 20475,
+      "title": "fix(macos): resolve 120%+ CPU regression and gateway stability",
+      "author": "teknomage8",
+      "score": 0.65,
+      "flags": [
+        "first_contribution",
+        "sensitive_paths",
+        "low_test_ratio",
+        "temporal_clustering"
+      ]
+    },
+    {
+      "pr": 20456,
+      "title": "fix(control-ui): show device pairing approval prompt when a new device requests access",
+      "author": "mmaghsoodnia",
+      "score": 0.65,
+      "flags": [
+        "first_contribution",
+        "sensitive_paths",
+        "low_test_ratio",
+        "temporal_clustering"
+      ]
+    },
+    {
+      "pr": 20450,
+      "title": "feat(mabos): comprehensive frontend dashboard and reasoning engine",
+      "author": "kingler",
+      "score": 0.65,
+      "flags": [
+        "first_contribution",
+        "sensitive_paths",
+        "low_test_ratio",
+        "temporal_clustering"
+      ]
+    },
+    {
+      "pr": 20431,
+      "title": "fix(sessions): add session contamination guards and self-leak lock detection",
+      "author": "marcomarandiz",
+      "score": 0.65,
+      "flags": [
+        "first_contribution",
+        "sensitive_paths",
+        "low_test_ratio",
+        "temporal_clustering"
+      ]
+    },
+    {
+      "pr": 20422,
+      "title": "Fix/tailscale device pairing",
+      "author": "slagyr",
+      "score": 0.65,
+      "flags": [
+        "first_contribution",
+        "sensitive_paths",
+        "temporal_clustering"
+      ]
+    },
+    {
+      "pr": 20420,
+      "title": "Telegram webhook listener to use the gateway's HTTP server instead of a (broken?) own server",
+      "author": "kesor",
+      "score": 0.65,
+      "flags": [
+        "first_contribution",
+        "sensitive_paths",
+        "low_test_ratio",
+        "temporal_clustering"
+      ]
+    },
+    {
+      "pr": 20418,
+      "title": "feat(hooks): add session:pre-spawn and agent:pre-run hook events",
+      "author": "NOVA-Openclaw",
+      "score": 0.65,
+      "flags": [
+        "new_account",
+        "first_contribution",
+        "sensitive_paths",
+        "temporal_clustering"
+      ]
+    },
+    {
+      "pr": 20411,
+      "title": "fix(gateway): check .ts.net host before loopback guard in isLocalDirectRequest",
+      "author": "arosstale",
+      "score": 0.65,
+      "flags": [
+        "first_contribution",
+        "sensitive_paths",
+        "temporal_clustering"
+      ]
+    },
+    {
+      "pr": 20394,
+      "title": "feat(gateway): make chat history byte limit configurable via gateway.maxChatHistoryBytes",
+      "author": "mgratch",
+      "score": 0.65,
+      "flags": [
+        "first_contribution",
+        "sensitive_paths",
+        "low_test_ratio",
+        "temporal_clustering"
+      ]
+    },
+    {
+      "pr": 20381,
+      "title": "feat(gateway): make chat history byte limit configurable via `gateway.maxChatHistoryBytes`",
+      "author": "mgratch",
+      "score": 0.65,
+      "flags": [
+        "first_contribution",
+        "sensitive_paths",
+        "low_test_ratio",
+        "temporal_clustering"
+      ]
+    }
+  ]
+}
