@@ -15,3 +15,4 @@ venv/
 .mcp.json
 mcp_stderr*.log
 .gatekeeper_cache.db
+*-tutorial.md
