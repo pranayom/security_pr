@@ -313,5 +313,205 @@ def stale_detect(
         render_staleness_report(report, console)
 
 
+@app.command(name="classify-labels")
+def classify_labels(
+    owner: str = typer.Argument(help="GitHub repo owner"),
+    repo: str = typer.Argument(help="GitHub repo name"),
+    item_type: str = typer.Argument(help="'pr' or 'issue'"),
+    item_number: int = typer.Argument(help="PR or issue number"),
+    vision: str = typer.Option("", "--vision", help="Path to YAML vision document"),
+    threshold: float = typer.Option(0.0, "--threshold", help="Min confidence (0 = config default 0.35)"),
+    json_output: bool = typer.Option(False, "--json", help="Output raw JSON report"),
+):
+    """Suggest labels for a PR or issue (Tier 1 + Tier 2, $0 cost)."""
+    from oss_maintainer_toolkit.gatekeeper.github_client import GitHubClient
+    from oss_maintainer_toolkit.gatekeeper.labeling import (
+        classify_item,
+        compute_item_embedding,
+        compute_label_embeddings,
+        github_labels_to_taxonomy,
+        merge_taxonomies,
+    )
+    from oss_maintainer_toolkit.gatekeeper.labeling_scorecard import (
+        labeling_report_to_json,
+        render_labeling_report,
+    )
+
+    async def _run():
+        vision_labels = []
+        if vision:
+            from oss_maintainer_toolkit.gatekeeper.vision import load_vision_document
+            vision_doc = load_vision_document(vision)
+            vision_labels = vision_doc.label_taxonomy
+
+        async with GitHubClient() as client:
+            raw_labels = await client.list_repo_labels(owner, repo)
+            github_labels = github_labels_to_taxonomy(raw_labels)
+
+            if item_type == "pr":
+                from oss_maintainer_toolkit.gatekeeper.ingest import ingest_pr
+                item = await ingest_pr(owner, repo, item_number, client)
+            else:
+                from oss_maintainer_toolkit.gatekeeper.issue_ingest import ingest_issue
+                item = await ingest_issue(owner, repo, item_number, client)
+
+        taxonomy = merge_taxonomies(vision_labels, github_labels)
+
+        if vision_labels and github_labels:
+            taxonomy_source = "merged"
+        elif vision_labels:
+            taxonomy_source = "vision"
+        else:
+            taxonomy_source = "github"
+
+        item_embedding = compute_item_embedding(item)
+        label_embeddings = compute_label_embeddings(taxonomy)
+        report = classify_item(
+            item, item_embedding, taxonomy, label_embeddings, threshold=threshold,
+        )
+        report.taxonomy_source = taxonomy_source
+        return report
+
+    report = asyncio.run(_run())
+
+    if json_output:
+        console.print(labeling_report_to_json(report))
+    else:
+        render_labeling_report(report, console)
+
+
+@app.command(name="contributor-profile")
+def contributor_profile(
+    owner: str = typer.Argument(help="GitHub repo owner"),
+    repo: str = typer.Argument(help="GitHub repo name"),
+    username: str = typer.Argument(help="GitHub username to profile"),
+    max_prs: int = typer.Option(0, "--max-prs", help="Max PRs to analyze (0 = config default 50)"),
+    json_output: bool = typer.Option(False, "--json", help="Output raw JSON profile"),
+):
+    """Build a contributor profile from PR history (Tier 1 + Tier 2, $0 cost)."""
+    from oss_maintainer_toolkit.gatekeeper.config import gatekeeper_settings
+    from oss_maintainer_toolkit.gatekeeper.contributor_profiles import build_contributor_profile
+    from oss_maintainer_toolkit.gatekeeper.contributor_scorecard import (
+        contributor_profile_to_json,
+        render_contributor_profile,
+    )
+    from oss_maintainer_toolkit.gatekeeper.github_client import GitHubClient
+    from oss_maintainer_toolkit.gatekeeper.ingest import ingest_batch
+
+    async def _run():
+        limit = max_prs if max_prs > 0 else gatekeeper_settings.contributor_max_prs
+        async with GitHubClient() as client:
+            raw_prs = await client.search_user_prs(owner, repo, username, max_results=limit)
+            pr_numbers = [p["number"] for p in raw_prs]
+            prs = list(await ingest_batch(owner, repo, pr_numbers, client))
+        return build_contributor_profile(owner, repo, username, prs)
+
+    profile = asyncio.run(_run())
+
+    if json_output:
+        console.print(contributor_profile_to_json(profile))
+    else:
+        render_contributor_profile(profile, console)
+
+
+@app.command(name="suggest-reviewers")
+def suggest_reviewers_cmd(
+    owner: str = typer.Argument(help="GitHub repo owner"),
+    repo: str = typer.Argument(help="GitHub repo name"),
+    pr_number: int = typer.Argument(help="Pull request number"),
+    max_suggestions: int = typer.Option(0, "--max", help="Max reviewers (0 = config default 5)"),
+    json_output: bool = typer.Option(False, "--json", help="Output raw JSON report"),
+):
+    """Suggest reviewers for a PR based on CODEOWNERS and review history ($0 cost)."""
+    from oss_maintainer_toolkit.gatekeeper.config import gatekeeper_settings
+    from oss_maintainer_toolkit.gatekeeper.github_client import GitHubClient
+    from oss_maintainer_toolkit.gatekeeper.ingest import ingest_pr, ingest_batch
+    from oss_maintainer_toolkit.gatekeeper.review_routing import parse_codeowners, suggest_reviewers
+    from oss_maintainer_toolkit.gatekeeper.review_routing_scorecard import (
+        render_review_routing_report,
+        review_routing_report_to_json,
+    )
+
+    async def _run():
+        async with GitHubClient() as client:
+            pr = await ingest_pr(owner, repo, pr_number, client)
+
+            codeowners_rules = None
+            for path in ["CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS"]:
+                content = await client.get_file_content(owner, repo, path)
+                if content is not None:
+                    codeowners_rules = parse_codeowners(content)
+                    break
+
+            recent_limit = gatekeeper_settings.review_recent_prs
+            raw_merged = await client.list_recently_merged_prs(owner, repo, since_days=90)
+            merged_numbers = [p["number"] for p in raw_merged[:recent_limit]]
+            merged_prs = list(await ingest_batch(owner, repo, merged_numbers, client))
+
+            reviews_by_pr: dict[int, list[str]] = {}
+            for mp in merged_prs:
+                reviews = await client.list_pr_reviews(owner, repo, mp.number)
+                reviewers = list({r["user"]["login"] for r in reviews if r.get("user")})
+                if reviewers:
+                    reviews_by_pr[mp.number] = reviewers
+
+        return suggest_reviewers(
+            pr,
+            codeowners_rules=codeowners_rules,
+            recent_prs=merged_prs,
+            reviews_by_pr=reviews_by_pr,
+            max_suggestions=max_suggestions,
+        )
+
+    report = asyncio.run(_run())
+
+    if json_output:
+        console.print(review_routing_report_to_json(report))
+    else:
+        render_review_routing_report(report, console)
+
+
+@app.command(name="detect-conflicts")
+def detect_conflicts_cmd(
+    owner: str = typer.Argument(help="GitHub repo owner"),
+    repo: str = typer.Argument(help="GitHub repo name"),
+    threshold: float = typer.Option(0.0, "--threshold", help="Min confidence (0 = config default 0.3)"),
+    file_overlap_weight: float = typer.Option(0.0, "--file-weight", help="File overlap weight (0 = config default 0.5)"),
+    max_prs: int = typer.Option(0, "--max-prs", help="Max open PRs to analyze (0 = all)"),
+    json_output: bool = typer.Option(False, "--json", help="Output raw JSON report"),
+):
+    """Detect conflicting PR pairs via file overlap + embedding similarity ($0 cost)."""
+    from oss_maintainer_toolkit.gatekeeper.conflict_detection import detect_conflicts
+    from oss_maintainer_toolkit.gatekeeper.conflict_scorecard import (
+        conflict_report_to_json,
+        render_conflict_report,
+    )
+    from oss_maintainer_toolkit.gatekeeper.dedup import compute_embedding
+    from oss_maintainer_toolkit.gatekeeper.github_client import GitHubClient
+    from oss_maintainer_toolkit.gatekeeper.ingest import ingest_batch
+
+    async def _run():
+        async with GitHubClient() as client:
+            raw_prs = await client.list_open_prs(owner, repo)
+            pr_numbers = [p["number"] for p in raw_prs]
+            if max_prs > 0:
+                pr_numbers = pr_numbers[:max_prs]
+            prs = list(await ingest_batch(owner, repo, pr_numbers, client))
+
+        embeddings = [compute_embedding(pr) for pr in prs]
+        return detect_conflicts(
+            prs, embeddings,
+            file_overlap_weight=file_overlap_weight,
+            threshold=threshold,
+        )
+
+    report = asyncio.run(_run())
+
+    if json_output:
+        console.print(conflict_report_to_json(report))
+    else:
+        render_conflict_report(report, console)
+
+
 if __name__ == "__main__":
     app()

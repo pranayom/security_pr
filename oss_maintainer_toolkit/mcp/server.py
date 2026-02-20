@@ -247,5 +247,210 @@ async def detect_stale_items_tool(
     return report.model_dump_json(indent=2)
 
 
+@mcp.tool()
+async def classify_labels_tool(
+    owner: str,
+    repo: str,
+    item_type: str,
+    item_number: int,
+    vision_document_path: str = "",
+    threshold: float = 0.0,
+) -> str:
+    """Suggest labels for a GitHub PR or issue using embedding similarity + keyword heuristics.
+
+    Tier 1 + Tier 2 only (no LLM, $0 cost). Classifies items against a label taxonomy
+    sourced from the vision document and/or GitHub repo labels.
+
+    Returns a JSON report with suggested labels sorted by confidence, including
+    embedding similarity scores and keyword matches.
+
+    Args:
+        owner: GitHub repo owner (e.g. "nicoseng").
+        repo: GitHub repo name (e.g. "OpenClaw").
+        item_type: "pr" or "issue".
+        item_number: PR or issue number.
+        vision_document_path: Path to YAML vision document (optional, provides richer taxonomy).
+        threshold: Minimum confidence threshold (0 = config default 0.35).
+    """
+    from oss_maintainer_toolkit.gatekeeper.github_client import GitHubClient
+    from oss_maintainer_toolkit.gatekeeper.labeling import (
+        classify_item,
+        compute_item_embedding,
+        compute_label_embeddings,
+        github_labels_to_taxonomy,
+        merge_taxonomies,
+    )
+
+    # Load taxonomies
+    vision_labels = []
+    if vision_document_path:
+        from oss_maintainer_toolkit.gatekeeper.vision import load_vision_document
+        vision_doc = load_vision_document(vision_document_path)
+        vision_labels = vision_doc.label_taxonomy
+
+    async with GitHubClient() as client:
+        # Fetch GitHub labels
+        raw_labels = await client.list_repo_labels(owner, repo)
+        github_labels = github_labels_to_taxonomy(raw_labels)
+
+        # Fetch item
+        if item_type == "pr":
+            from oss_maintainer_toolkit.gatekeeper.ingest import ingest_pr
+            item = await ingest_pr(owner, repo, item_number, client)
+        else:
+            from oss_maintainer_toolkit.gatekeeper.issue_ingest import ingest_issue
+            item = await ingest_issue(owner, repo, item_number, client)
+
+    # Merge taxonomies
+    taxonomy = merge_taxonomies(vision_labels, github_labels)
+
+    if vision_labels and github_labels:
+        taxonomy_source = "merged"
+    elif vision_labels:
+        taxonomy_source = "vision"
+    else:
+        taxonomy_source = "github"
+
+    # Compute embeddings and classify
+    item_embedding = compute_item_embedding(item)
+    label_embeddings = compute_label_embeddings(taxonomy)
+    report = classify_item(
+        item, item_embedding, taxonomy, label_embeddings, threshold=threshold,
+    )
+    report.taxonomy_source = taxonomy_source
+    return report.model_dump_json(indent=2)
+
+
+@mcp.tool()
+async def contributor_profile_tool(
+    owner: str,
+    repo: str,
+    username: str,
+    max_prs: int = 0,
+) -> str:
+    """Build a contributor profile from their PR history in a repository.
+
+    Analyzes merge rate, test inclusion rate, areas of expertise, and activity
+    patterns. Tier 1 + Tier 2 only (metadata analysis, no LLM, $0 cost).
+
+    Args:
+        owner: GitHub repo owner.
+        repo: GitHub repo name.
+        username: GitHub username to profile.
+        max_prs: Max PRs to analyze (0 = config default 50).
+    """
+    from oss_maintainer_toolkit.gatekeeper.config import gatekeeper_settings
+    from oss_maintainer_toolkit.gatekeeper.contributor_profiles import build_contributor_profile
+    from oss_maintainer_toolkit.gatekeeper.github_client import GitHubClient
+    from oss_maintainer_toolkit.gatekeeper.ingest import ingest_batch
+
+    limit = max_prs if max_prs > 0 else gatekeeper_settings.contributor_max_prs
+
+    async with GitHubClient() as client:
+        raw_prs = await client.search_user_prs(owner, repo, username, max_results=limit)
+        pr_numbers = [p["number"] for p in raw_prs]
+        prs = list(await ingest_batch(owner, repo, pr_numbers, client))
+
+    profile = build_contributor_profile(owner, repo, username, prs)
+    return profile.model_dump_json(indent=2)
+
+
+@mcp.tool()
+async def suggest_reviewers_tool(
+    owner: str,
+    repo: str,
+    pr_number: int,
+    max_suggestions: int = 0,
+) -> str:
+    """Suggest reviewers for a GitHub PR based on CODEOWNERS and review history.
+
+    Combines CODEOWNERS file matching and past review patterns on similar files.
+    Tier 2 only (heuristic rules, no LLM, $0 cost).
+
+    Args:
+        owner: GitHub repo owner.
+        repo: GitHub repo name.
+        pr_number: Pull request number.
+        max_suggestions: Max reviewers to suggest (0 = config default 5).
+    """
+    from oss_maintainer_toolkit.gatekeeper.config import gatekeeper_settings
+    from oss_maintainer_toolkit.gatekeeper.github_client import GitHubClient
+    from oss_maintainer_toolkit.gatekeeper.ingest import ingest_pr, ingest_batch
+    from oss_maintainer_toolkit.gatekeeper.review_routing import parse_codeowners, suggest_reviewers
+
+    async with GitHubClient() as client:
+        pr = await ingest_pr(owner, repo, pr_number, client)
+
+        # Try to load CODEOWNERS
+        codeowners_rules = None
+        for path in ["CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS"]:
+            content = await client.get_file_content(owner, repo, path)
+            if content is not None:
+                codeowners_rules = parse_codeowners(content)
+                break
+
+        # Fetch recent merged PRs for review history
+        recent_limit = gatekeeper_settings.review_recent_prs
+        raw_merged = await client.list_recently_merged_prs(owner, repo, since_days=90)
+        merged_numbers = [p["number"] for p in raw_merged[:recent_limit]]
+        merged_prs = list(await ingest_batch(owner, repo, merged_numbers, client))
+
+        # Fetch reviews for merged PRs
+        reviews_by_pr: dict[int, list[str]] = {}
+        for mp in merged_prs:
+            reviews = await client.list_pr_reviews(owner, repo, mp.number)
+            reviewers = list({r["user"]["login"] for r in reviews if r.get("user")})
+            if reviewers:
+                reviews_by_pr[mp.number] = reviewers
+
+    report = suggest_reviewers(
+        pr,
+        codeowners_rules=codeowners_rules,
+        recent_prs=merged_prs,
+        reviews_by_pr=reviews_by_pr,
+        max_suggestions=max_suggestions,
+    )
+    return report.model_dump_json(indent=2)
+
+
+@mcp.tool()
+async def detect_conflicts_tool(
+    owner: str,
+    repo: str,
+    threshold: float = 0.0,
+    file_overlap_weight: float = 0.0,
+) -> str:
+    """Detect conflicting PR pairs via file overlap and embedding similarity.
+
+    Identifies open PRs that modify overlapping files or similar code regions.
+    Tier 1 + Tier 2 only (no LLM, $0 cost).
+
+    Returns a JSON report with conflict pairs sorted by confidence.
+
+    Args:
+        owner: GitHub repo owner.
+        repo: GitHub repo name.
+        threshold: Minimum confidence to report (0 = config default 0.3).
+        file_overlap_weight: Weight for file overlap vs embedding (0 = config default 0.5).
+    """
+    from oss_maintainer_toolkit.gatekeeper.conflict_detection import detect_conflicts
+    from oss_maintainer_toolkit.gatekeeper.dedup import compute_embedding
+    from oss_maintainer_toolkit.gatekeeper.github_client import GitHubClient
+    from oss_maintainer_toolkit.gatekeeper.ingest import ingest_batch
+
+    async with GitHubClient() as client:
+        raw_prs = await client.list_open_prs(owner, repo)
+        pr_numbers = [p["number"] for p in raw_prs]
+        prs = list(await ingest_batch(owner, repo, pr_numbers, client))
+
+    embeddings = [compute_embedding(pr) for pr in prs]
+    report = detect_conflicts(
+        prs, embeddings,
+        file_overlap_weight=file_overlap_weight,
+        threshold=threshold,
+    )
+    return report.model_dump_json(indent=2)
+
+
 if __name__ == "__main__":
     mcp.run()

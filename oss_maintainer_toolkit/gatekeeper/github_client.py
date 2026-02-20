@@ -199,6 +199,63 @@ class GitHubClient:
                 merged.append(item)
         return merged
 
+    async def list_repo_labels(self, owner: str, repo: str) -> list[dict]:
+        """List all labels for a repository (paginated)."""
+        return await self._paginate(
+            f"/repos/{owner}/{repo}/labels",
+            params={"per_page": "100"},
+        )
+
+    async def search_user_prs(
+        self, owner: str, repo: str, username: str, max_results: int = 50,
+    ) -> list[dict]:
+        """Search for PRs by a user in a repo via Search API.
+
+        Returns raw search result items (limited to max_results).
+        Returns empty list on rate limit or errors.
+        """
+        query = f"repo:{owner}/{repo} author:{username} type:pr"
+        try:
+            results: list[dict] = []
+            page = 1
+            while len(results) < max_results:
+                resp = await self.client.get(
+                    "/search/issues",
+                    params={"q": query, "per_page": "100", "page": str(page)},
+                )
+                if resp.status_code in (403, 422, 429):
+                    break
+                resp.raise_for_status()
+                items = resp.json().get("items", [])
+                if not items:
+                    break
+                results.extend(items)
+                page += 1
+            return results[:max_results]
+        except (httpx.HTTPStatusError, httpx.TimeoutException):
+            return []
+
+    async def list_pr_reviews(self, owner: str, repo: str, number: int) -> list[dict]:
+        """List reviews on a pull request (paginated)."""
+        return await self._paginate(
+            f"/repos/{owner}/{repo}/pulls/{number}/reviews",
+            params={"per_page": "100"},
+        )
+
+    async def get_file_content(self, owner: str, repo: str, path: str) -> str | None:
+        """Fetch raw file content from the default branch.
+
+        Returns None if file doesn't exist (404).
+        """
+        resp = await self.client.get(
+            f"/repos/{owner}/{repo}/contents/{path}",
+            headers={"Accept": "application/vnd.github.raw+json"},
+        )
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        return resp.text
+
     async def count_user_issues(self, owner: str, repo: str, username: str) -> int:
         """Count issues authored by a user in a repo via Search API.
 

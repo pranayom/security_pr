@@ -43,6 +43,22 @@ class GatekeeperSettings(BaseSettings):
     stale_similarity_threshold: float = 0.75
     stale_inactive_days: int = 90
 
+    # Label Automation
+    label_similarity_threshold: float = 0.35
+    label_keyword_weight: float = 0.3
+    label_max_suggestions: int = 5
+
+    # Contributor Profiles
+    contributor_max_prs: int = 50  # max PRs to analyze per contributor
+
+    # Review Routing
+    review_max_suggestions: int = 5
+    review_recent_prs: int = 50  # recent merged PRs to check for reviewer history
+
+    # Cross-PR Conflict Detection
+    conflict_file_overlap_weight: float = 0.5
+    conflict_threshold: float = 0.3
+
     # Tier 3: Vision — LLM provider
     llm_provider: str = "auto"  # auto, openrouter, openai, anthropic, gemini, generic, claude_cli
     llm_api_key: str = ""  # unified key (auto-detects provider from prefix)

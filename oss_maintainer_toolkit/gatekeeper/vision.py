@@ -14,6 +14,7 @@ import yaml
 from oss_maintainer_toolkit.gatekeeper.config import gatekeeper_settings
 from oss_maintainer_toolkit.gatekeeper.models import (
     IssueMetadata,
+    LabelDefinition,
     PRMetadata,
     TierOutcome,
     VisionAlignmentResult,
@@ -93,11 +94,24 @@ def load_vision_document(path: str) -> VisionDocument:
         for p in data.get("principles", [])
     ]
 
+    label_taxonomy = [
+        LabelDefinition(
+            name=lb["name"],
+            description=lb.get("description", ""),
+            keywords=lb.get("keywords", []),
+            color=lb.get("color", ""),
+            source="vision",
+        )
+        for lb in data.get("label_taxonomy", [])
+        if lb.get("name")
+    ]
+
     return VisionDocument(
         project=data.get("project", ""),
         principles=principles,
         anti_patterns=data.get("anti_patterns", []),
         focus_areas=data.get("focus_areas", []),
+        label_taxonomy=label_taxonomy,
     )
 
 

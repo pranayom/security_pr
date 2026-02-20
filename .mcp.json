@@ -3,7 +3,7 @@
     "oss-maintainer-toolkit": {
       "command": "C:\\Users\\prana\\anaconda3\\python.exe",
       "args": ["-m", "oss_maintainer_toolkit.mcp.server"],
-      "cwd": "C:\\projects\\adhoc_projects\\llm_usecases\\security_pr"
+      "cwd": "C:\\projects\\adhoc_projects\\llm_usecases\\oss-maintainer-toolkit"
     }
   }
 }

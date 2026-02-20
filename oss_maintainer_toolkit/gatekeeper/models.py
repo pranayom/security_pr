@@ -122,11 +122,20 @@ class VisionPrinciple(BaseModel):
     description: str
 
 
+class LabelDefinition(BaseModel):
+    name: str
+    description: str = ""
+    keywords: list[str] = []
+    color: str = ""
+    source: str = "vision"  # "vision" or "github"
+
+
 class VisionDocument(BaseModel):
     project: str
     principles: list[VisionPrinciple] = []
     anti_patterns: list[str] = []
     focus_areas: list[str] = []
+    label_taxonomy: list[LabelDefinition] = []
 
 
 class VisionAlignmentResult(BaseModel):
@@ -223,3 +232,92 @@ class StalenessReport(BaseModel):
     total_merged_prs_checked: int = 0
     threshold: float = 0.0
     inactive_days: int = 0
+
+
+# --- Label Automation ---
+
+class LabelSuggestion(BaseModel):
+    label: str
+    confidence: float
+    embedding_similarity: float = 0.0
+    keyword_matches: list[str] = []
+    source: str = "vision"  # "vision" or "github"
+
+
+class LabelingReport(BaseModel):
+    owner: str
+    repo: str
+    item_type: str          # "pr" or "issue"
+    item_number: int
+    item_title: str = ""
+    existing_labels: list[str] = []
+    suggestions: list[LabelSuggestion] = []
+    taxonomy_source: str = ""  # "vision", "github", "merged"
+    taxonomy_size: int = 0
+    threshold: float = 0.0
+
+
+# --- Contributor Profiles ---
+
+class ContributorProfile(BaseModel):
+    owner: str
+    repo: str
+    username: str
+    total_prs: int = 0
+    merged_prs: int = 0
+    open_prs: int = 0
+    closed_prs: int = 0          # closed without merge
+    merge_rate: float = 0.0
+    test_inclusion_rate: float = 0.0
+    avg_additions: float = 0.0
+    avg_deletions: float = 0.0
+    areas_of_expertise: list[str] = []  # top directories
+    first_contribution: datetime | None = None
+    last_contribution: datetime | None = None
+    review_count: int = 0         # PRs reviewed by this user
+    prs_analyzed: int = 0         # PRs fetched for detailed analysis
+
+
+# --- Review Routing ---
+
+class CodeOwnerRule(BaseModel):
+    pattern: str
+    owners: list[str]
+
+
+class ReviewerSuggestion(BaseModel):
+    username: str
+    score: float
+    reasons: list[str] = []
+
+
+class ReviewRoutingReport(BaseModel):
+    owner: str
+    repo: str
+    pr_number: int
+    pr_title: str = ""
+    changed_files: list[str] = []
+    suggestions: list[ReviewerSuggestion] = []
+    codeowners_found: bool = False
+    recent_reviewers_checked: int = 0
+
+
+# --- Cross-PR Conflict Detection ---
+
+class ConflictPair(BaseModel):
+    pr_a: int
+    pr_b: int
+    pr_a_title: str = ""
+    pr_b_title: str = ""
+    overlapping_files: list[str] = []
+    semantic_similarity: float = 0.0
+    confidence: float = 0.0       # blended file overlap + semantic
+
+
+class ConflictReport(BaseModel):
+    owner: str
+    repo: str
+    total_open_prs: int = 0
+    conflict_pairs: list[ConflictPair] = []
+    file_overlap_weight: float = 0.5
+    threshold: float = 0.0
