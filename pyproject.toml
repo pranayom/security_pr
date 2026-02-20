@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "oss-maintainer-toolkit"
-version = "0.3.0"
+version = "0.4.0"
 description = "OSS Maintainer Toolkit — automated triage for PRs, issues, contributors, and review queues"
 readme = "README.md"
 license = "MIT"
@@ -56,6 +56,11 @@ maintainer = "oss_maintainer_toolkit.cli.main:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["oss_maintainer_toolkit"]
+exclude = [
+    "oss_maintainer_toolkit/scanners",
+    "oss_maintainer_toolkit/analysis",
+    "oss_maintainer_toolkit/cve",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

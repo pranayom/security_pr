@@ -5,6 +5,7 @@ import asyncio
 import os
 import sys
 
+from oss_maintainer_toolkit.gatekeeper.coaching import build_flag_coaching, build_vision_coaching
 from oss_maintainer_toolkit.gatekeeper.github_client import GitHubClient
 from oss_maintainer_toolkit.gatekeeper.ingest import ingest_pr
 from oss_maintainer_toolkit.gatekeeper.issue_ingest import ingest_issue
@@ -89,6 +90,31 @@ def _format_comment(scorecard) -> str:
             }.get(f.severity.value, f.severity.value)
             lines.append(f"- [{severity_badge}] **{f.title}**: {f.explanation}")
         lines.append("")
+
+    # Coaching section (only for non-FAST_TRACK verdicts)
+    if scorecard.verdict != Verdict.FAST_TRACK:
+        coaching_lines = build_flag_coaching(scorecard.flags) if scorecard.flags else []
+        vision_coaching = (
+            build_vision_coaching(scorecard.vision_result)
+            if scorecard.vision_result
+            and scorecard.vision_result.alignment_score > 0
+            and (scorecard.vision_result.violated_principles or scorecard.vision_result.concerns)
+            else []
+        )
+        if coaching_lines or vision_coaching:
+            lines.append("### How to Improve")
+            lines.append("")
+            lines.extend(coaching_lines)
+            if vision_coaching:
+                if coaching_lines:
+                    lines.append("")
+                    lines.append("Based on this project's governance principles:")
+                    lines.append("")
+                else:
+                    lines.append("Based on this project's governance principles:")
+                    lines.append("")
+                lines.extend(vision_coaching)
+            lines.append("")
 
     # Vision alignment details
     if scorecard.vision_result and scorecard.vision_result.alignment_score > 0:
@@ -325,6 +351,31 @@ def _format_issue_comment(scorecard) -> str:
             }.get(f.severity.value, f.severity.value)
             lines.append(f"- [{severity_badge}] **{f.title}**: {f.explanation}")
         lines.append("")
+
+    # Coaching section (only for non-FAST_TRACK verdicts)
+    if scorecard.verdict != Verdict.FAST_TRACK:
+        coaching_lines = build_flag_coaching(scorecard.flags) if scorecard.flags else []
+        vision_coaching = (
+            build_vision_coaching(scorecard.vision_result)
+            if scorecard.vision_result
+            and scorecard.vision_result.alignment_score > 0
+            and (scorecard.vision_result.violated_principles or scorecard.vision_result.concerns)
+            else []
+        )
+        if coaching_lines or vision_coaching:
+            lines.append("### How to Improve")
+            lines.append("")
+            lines.extend(coaching_lines)
+            if vision_coaching:
+                if coaching_lines:
+                    lines.append("")
+                    lines.append("Based on this project's governance principles:")
+                    lines.append("")
+                else:
+                    lines.append("Based on this project's governance principles:")
+                    lines.append("")
+                lines.extend(vision_coaching)
+            lines.append("")
 
     if scorecard.vision_result and scorecard.vision_result.alignment_score > 0:
         vr = scorecard.vision_result
