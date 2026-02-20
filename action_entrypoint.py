@@ -13,6 +13,40 @@ from oss_maintainer_toolkit.gatekeeper.issue_pipeline import run_issue_pipeline
 from oss_maintainer_toolkit.gatekeeper.models import Verdict
 
 
+def _qualifies_for_badge(scorecard) -> bool:
+    """Check if a scorecard qualifies for an exemplary contributor badge.
+
+    Criteria: FAST_TRACK verdict + zero flags + (if vision ran) alignment >= 0.8.
+    """
+    if scorecard.verdict != Verdict.FAST_TRACK:
+        return False
+    if scorecard.flags:
+        return False
+    if scorecard.vision_result and scorecard.vision_result.alignment_score > 0:
+        if scorecard.vision_result.alignment_score < 0.8:
+            return False
+    return True
+
+
+def _badge_section(scorecard) -> list[str]:
+    """Generate the exemplary contributor badge markdown section."""
+    lines = [
+        "## &#x1F3C6; Exemplary Contribution",
+        "",
+        "> **This PR passed all automated checks with zero flags.**",
+    ]
+    if scorecard.vision_result and scorecard.vision_result.alignment_score >= 0.8:
+        lines.append(
+            f"> Vision alignment: **{scorecard.vision_result.alignment_score:.0%}**"
+        )
+    lines += [
+        "",
+        "This contribution demonstrates strong alignment with project standards.",
+        "",
+    ]
+    return lines
+
+
 def _format_comment(scorecard) -> str:
     """Format scorecard as a GitHub PR comment in markdown."""
     verdict = scorecard.verdict.value.upper().replace("_", " ")
@@ -22,7 +56,12 @@ def _format_comment(scorecard) -> str:
         Verdict.RECOMMEND_CLOSE: "&#x274C;",   # red X
     }.get(scorecard.verdict, "")
 
-    lines = [
+    lines = []
+
+    if _qualifies_for_badge(scorecard):
+        lines.extend(_badge_section(scorecard))
+
+    lines += [
         f"## {emoji} PR Triage: **{verdict}**",
         "",
         f"> {scorecard.summary}",
@@ -250,7 +289,17 @@ def _format_issue_comment(scorecard) -> str:
         Verdict.RECOMMEND_CLOSE: "&#x274C;",
     }.get(scorecard.verdict, "")
 
-    lines = [
+    lines = []
+
+    if _qualifies_for_badge(scorecard):
+        lines.extend([
+            "## &#x1F3C6; Well-Formed Issue",
+            "",
+            "> **This issue passed all automated checks with zero flags.**",
+            "",
+        ])
+
+    lines += [
         f"## {emoji} Issue Triage: **{verdict}**",
         "",
         f"> {scorecard.summary}",
