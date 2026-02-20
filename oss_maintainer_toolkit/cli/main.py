@@ -8,8 +8,6 @@ from rich.table import Table
 
 from typing import Optional
 
-from typing import Optional
-
 app = typer.Typer(
     name="maintainer",
     help="OSS Maintainer Toolkit — automated triage for PRs, issues, contributors, and review queues.",
