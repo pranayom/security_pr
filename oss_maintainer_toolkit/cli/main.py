@@ -471,6 +471,51 @@ def suggest_reviewers_cmd(
         render_review_routing_report(report, console)
 
 
+@app.command(name="generate-vision")
+def generate_vision(
+    owner: str = typer.Argument(help="GitHub repo owner"),
+    repo: str = typer.Argument(help="GitHub repo name"),
+    output: str = typer.Option("", "--output", "-o", help="Output file path (default: stdout)"),
+    provider: str = typer.Option("", "--provider", help="LLM provider: auto, openrouter, openai, anthropic, gemini, generic"),
+    api_key: str = typer.Option("", "--api-key", help="Unified API key (auto-detects provider from prefix)"),
+    max_merged: int = typer.Option(10, "--max-merged", help="Max merged PRs to analyze"),
+    max_rejected: int = typer.Option(10, "--max-rejected", help="Max rejected PRs to analyze"),
+    json_output: bool = typer.Option(False, "--json", help="Output raw JSON instead of YAML"),
+):
+    """Generate a Vision Document for a GitHub repository using LLM analysis."""
+    from oss_maintainer_toolkit.gatekeeper.vision_generation import (
+        generate_vision_document,
+        vision_document_to_yaml,
+    )
+
+    async def _run():
+        return await generate_vision_document(
+            owner, repo,
+            provider=provider,
+            api_key=api_key,
+            max_merged=max_merged,
+            max_rejected=max_rejected,
+        )
+
+    try:
+        doc = asyncio.run(_run())
+    except Exception as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(code=1)
+
+    if json_output:
+        result = doc.model_dump_json(indent=2)
+    else:
+        result = vision_document_to_yaml(doc, owner, repo)
+
+    if output:
+        with open(output, "w", encoding="utf-8") as f:
+            f.write(result)
+        console.print(f"[green]Vision document written to {output}[/green]")
+    else:
+        console.print(result)
+
+
 @app.command(name="detect-conflicts")
 def detect_conflicts_cmd(
     owner: str = typer.Argument(help="GitHub repo owner"),

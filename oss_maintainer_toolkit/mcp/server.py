@@ -452,5 +452,39 @@ async def detect_conflicts_tool(
     return report.model_dump_json(indent=2)
 
 
+@mcp.tool()
+async def generate_vision_tool(
+    owner: str,
+    repo: str,
+    max_merged: int = 10,
+    max_rejected: int = 10,
+) -> str:
+    """Generate a Vision Document for a GitHub repository using LLM analysis.
+
+    Fetches README, CONTRIBUTING.md, and recent merged/rejected PRs to deduce
+    the project's unwritten governance rules. Returns a YAML vision document.
+
+    Requires an LLM API key configured via AUDITOR_GK_LLM_API_KEY or
+    provider-specific keys (AUDITOR_GK_OPENROUTER_API_KEY, etc.).
+
+    Args:
+        owner: GitHub repo owner.
+        repo: GitHub repo name.
+        max_merged: Max merged PRs to analyze (default 10).
+        max_rejected: Max rejected PRs to analyze (default 10).
+    """
+    from oss_maintainer_toolkit.gatekeeper.vision_generation import (
+        generate_vision_document,
+        vision_document_to_yaml,
+    )
+
+    doc = await generate_vision_document(
+        owner, repo,
+        max_merged=max_merged,
+        max_rejected=max_rejected,
+    )
+    return vision_document_to_yaml(doc, owner, repo)
+
+
 if __name__ == "__main__":
     mcp.run()

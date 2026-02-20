@@ -199,6 +199,31 @@ class GitHubClient:
                 merged.append(item)
         return merged
 
+    async def list_closed_unmerged_prs(
+        self, owner: str, repo: str, max_results: int = 10,
+    ) -> list[dict]:
+        """List recently closed-but-not-merged pull requests.
+
+        These represent rejected or abandoned PRs — useful for inferring
+        what the project does NOT accept.
+        """
+        items = await self._paginate(
+            f"/repos/{owner}/{repo}/pulls",
+            params={
+                "state": "closed",
+                "sort": "updated",
+                "direction": "desc",
+                "per_page": "100",
+            },
+        )
+        rejected = []
+        for item in items:
+            if item.get("merged_at") is None:
+                rejected.append(item)
+                if len(rejected) >= max_results:
+                    break
+        return rejected
+
     async def list_repo_labels(self, owner: str, repo: str) -> list[dict]:
         """List all labels for a repository (paginated)."""
         return await self._paginate(
