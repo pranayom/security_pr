@@ -321,3 +321,48 @@ class ConflictReport(BaseModel):
     conflict_pairs: list[ConflictPair] = []
     file_overlap_weight: float = 0.5
     threshold: float = 0.0
+
+
+# --- Audit Backlog ---
+
+class DuplicateCluster(BaseModel):
+    members: list[dict] = []  # [{pr: int, title: str, author: str, similarity: float}]
+    threshold: float = 0.0
+
+
+class AuditRiskEntry(BaseModel):
+    pr_number: int
+    title: str = ""
+    author: str = ""
+    score: float = 0.0
+    flag_count: int = 0
+    high_severity_count: int = 0
+    flags: list[str] = []
+
+
+class AuditReport(BaseModel):
+    owner: str
+    repo: str
+    prs_analyzed: int = 0
+    total_open_prs: int = 0
+    elapsed_seconds: float = 0.0
+    # Verdict distribution
+    fast_track_count: int = 0
+    review_required_count: int = 0
+    recommend_close_count: int = 0
+    # Duplicate clusters at multiple thresholds
+    clusters_090: list[DuplicateCluster] = []
+    clusters_085: list[DuplicateCluster] = []
+    clusters_080: list[DuplicateCluster] = []
+    # Highest-risk PRs
+    highest_risk: list[AuditRiskEntry] = []
+    # Flag frequency: {flag_id: count}
+    flag_frequency: dict[str, int] = {}
+    # Contributor stats
+    unique_authors: int = 0
+    first_time_contributors: int = 0
+    new_accounts: int = 0
+    sensitive_path_prs: int = 0
+    low_test_prs: int = 0
+    # Vision document used
+    vision_document: str = ""

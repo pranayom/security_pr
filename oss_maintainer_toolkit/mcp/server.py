@@ -453,6 +453,41 @@ async def detect_conflicts_tool(
 
 
 @mcp.tool()
+async def audit_backlog_tool(
+    owner: str,
+    repo: str,
+    count: int = 100,
+    concurrency: int = 3,
+    vision_document_path: str = "",
+) -> str:
+    """Audit a repository's PR backlog using batch triage.
+
+    Fetches the N most recent open PRs, runs embedding dedup (Tier 1) and
+    heuristic rules (Tier 2), and produces a structured report with verdict
+    distribution, duplicate clusters, highest-risk PRs, and contributor stats.
+
+    Tier 1 + Tier 2 only (no LLM, $0 cost).
+
+    Args:
+        owner: GitHub repo owner.
+        repo: GitHub repo name.
+        count: Number of PRs to analyze (default 100).
+        concurrency: Concurrent API requests (default 3).
+        vision_document_path: Path to YAML vision document (optional, adds focus areas).
+    """
+    from oss_maintainer_toolkit.gatekeeper.audit_backlog import run_audit
+    from oss_maintainer_toolkit.gatekeeper.audit_scorecard import audit_report_to_markdown
+
+    report = await run_audit(
+        owner, repo,
+        count=count,
+        concurrency=concurrency,
+        vision_document_path=vision_document_path,
+    )
+    return audit_report_to_markdown(report)
+
+
+@mcp.tool()
 async def generate_vision_tool(
     owner: str,
     repo: str,

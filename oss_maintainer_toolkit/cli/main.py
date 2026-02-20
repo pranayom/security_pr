@@ -471,6 +471,49 @@ def suggest_reviewers_cmd(
         render_review_routing_report(report, console)
 
 
+@app.command(name="audit-backlog")
+def audit_backlog(
+    owner: str = typer.Argument(help="GitHub repo owner"),
+    repo: str = typer.Argument(help="GitHub repo name"),
+    count: int = typer.Option(100, "--count", "-n", help="Number of PRs to analyze"),
+    concurrency: int = typer.Option(3, "--concurrency", help="Concurrent API requests"),
+    vision: str = typer.Option("", "--vision", help="Path to YAML vision document"),
+    output: str = typer.Option("", "--output", "-o", help="Save markdown report to file"),
+    json_output: bool = typer.Option(False, "--json", help="Output raw JSON report"),
+):
+    """Audit a repository's PR backlog — batch triage with dedup + heuristics ($0 cost)."""
+    from oss_maintainer_toolkit.gatekeeper.audit_backlog import run_audit
+    from oss_maintainer_toolkit.gatekeeper.audit_scorecard import (
+        audit_report_to_json,
+        audit_report_to_markdown,
+        render_audit_report,
+    )
+
+    async def _run():
+        return await run_audit(
+            owner, repo,
+            count=count,
+            concurrency=concurrency,
+            vision_document_path=vision,
+        )
+
+    try:
+        report = asyncio.run(_run())
+    except Exception as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(code=1)
+
+    if output:
+        md = audit_report_to_markdown(report)
+        with open(output, "w", encoding="utf-8") as f:
+            f.write(md)
+        console.print(f"[green]Report written to {output}[/green]")
+    elif json_output:
+        console.print(audit_report_to_json(report))
+    else:
+        render_audit_report(report, console)
+
+
 @app.command(name="generate-vision")
 def generate_vision(
     owner: str = typer.Argument(help="GitHub repo owner"),
